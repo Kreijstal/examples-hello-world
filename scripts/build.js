@@ -141,10 +141,17 @@ async function build() {
     await Deno.writeTextFile(join(historyDir, "index.html"), historyHtml);
   }
 
-  // All articles page
+  // All articles page (exclude User: and talk- pages)
+  const mainArticles = articles.filter(a => !a.slug.startsWith("User:") && !a.slug.startsWith("talk-"));
   await ensureDir(join(DIST_DIR, "all-articles"));
-  const allArticlesHtml = generateAllArticlesPage(articles);
+  const allArticlesHtml = generateAllArticlesPage(mainArticles);
   await Deno.writeTextFile(join(DIST_DIR, "all-articles", "index.html"), allArticlesHtml);
+
+  // All users page
+  const userArticles = articles.filter(a => a.slug.startsWith("User:"));
+  await ensureDir(join(DIST_DIR, "all-users"));
+  const allUsersHtml = generateAllUsersPage(userArticles);
+  await Deno.writeTextFile(join(DIST_DIR, "all-users", "index.html"), allUsersHtml);
 
   // Recent changes page
   await ensureDir(join(DIST_DIR, "recent-changes"));
@@ -190,6 +197,7 @@ function wrapPage(title, bodyHtml) {
         <li><a href="${BASE_PATH}/recent-changes/">Recent changes</a></li>
         <li><a href="${BASE_PATH}/search/">Search</a></li>
         <li><a href="${BASE_PATH}/wiki/about/">About</a></li>
+        <li><a href="${BASE_PATH}/all-users/">All users</a></li>
       </ul>
     </div>
     <div id="content">
@@ -209,6 +217,22 @@ function generateAllArticlesPage(articles) {
     .map((a) => `<li><a href="${BASE_PATH}/wiki/${a.slug}/">${a.title}</a></li>`)
     .join("\n      ");
   return wrapPage("All Articles", `
+    <ul class="article-list">
+      ${items}
+    </ul>`);
+}
+
+function generateAllUsersPage(users) {
+  if (users.length === 0) {
+    return wrapPage("All Users", `<p>No user pages yet.</p>`);
+  }
+  const items = users
+    .map((a) => {
+      const username = a.slug.replace(/^User:/, "");
+      return `<li><a href="${BASE_PATH}/wiki/${a.slug}/">${username}</a></li>`;
+    })
+    .join("\n      ");
+  return wrapPage("All Users", `
     <ul class="article-list">
       ${items}
     </ul>`);

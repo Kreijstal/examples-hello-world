@@ -393,6 +393,30 @@ wiki-chat {
 #tabs a.redlink { color: #ba0000; }
 
 
+/* Userboxes */
+.userbox {
+  display: flex;
+  align-items: center;
+  border: 1px solid #a2a9b1;
+  margin: 0.5em 0;
+  max-width: 300px;
+  font-size: 0.85em;
+  font-family: sans-serif;
+}
+
+.userbox-icon {
+  background: #eaecf0;
+  padding: 0.5em;
+  font-size: 1.5em;
+  min-width: 45px;
+  text-align: center;
+  border-right: 1px solid #a2a9b1;
+}
+
+.userbox-text {
+  padding: 0.4em 0.6em;
+}
+
 /* Redlinks — links to non-existent articles */
 a.redlink { color: #ba0000; }
 a.redlink:visited { color: #a55858; }
