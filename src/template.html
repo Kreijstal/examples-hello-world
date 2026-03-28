@@ -34,34 +34,23 @@
     </div>
     <div id="content">
       <div id="tabs">
-        <a class="active" href="#" id="tab-article" onclick="showTab('article'); return false;">Article</a>
-        <a href="#" id="tab-discussion" onclick="showTab('discussion'); return false;">Discussion</a>
+        <a class="active" href="{{BASE_PATH}}/wiki/{{SLUG}}/">Article</a>
+        <a href="#" id="tab-discussion" onclick="goToDiscussion(); return false;">Discussion</a>
         <a href="{{BASE_PATH}}/wiki/{{SLUG}}/history/">History</a>
         <a href="#" id="edit-tab" onclick="startEdit(); return false;">Edit</a>
       </div>
-      <div id="panel-article">
-        <h1 id="article-title">{{TITLE}}</h1>
-        <div class="article-meta">
-          Last updated: <time>{{UPDATED_AT}}</time>
-        </div>
-        <div id="article-content">
-          {{CONTENT}}
-        </div>
-        <div id="edit-form" style="display:none">
-          <textarea id="edit-textarea"></textarea>
-          <input type="text" id="edit-summary" placeholder="Edit summary">
-          <button onclick="submitEdit()">Save page</button>
-          <button onclick="cancelEdit()">Cancel</button>
-        </div>
+      <h1 id="article-title">{{TITLE}}</h1>
+      <div class="article-meta">
+        Last updated: <time>{{UPDATED_AT}}</time>
       </div>
-      <div id="panel-discussion" style="display:none">
-        <h1>Discussion: {{TITLE}}</h1>
-        <div id="discussion-comments"><p>Loading discussion...</p></div>
-        <div id="discussion-form">
-          <h3>Add a comment</h3>
-          <textarea id="discussion-textarea" placeholder="Write your comment..."></textarea>
-          <button onclick="postComment()">Post comment</button>
-        </div>
+      <div id="article-content">
+        {{CONTENT}}
+      </div>
+      <div id="edit-form" style="display:none">
+        <textarea id="edit-textarea"></textarea>
+        <input type="text" id="edit-summary" placeholder="Edit summary">
+        <button onclick="submitEdit()">Save page</button>
+        <button onclick="cancelEdit()">Cancel</button>
       </div>
     </div>
   </div>
@@ -76,16 +65,32 @@
       </div>
     </div>
   </dialog>
+  <dialog id="create-discussion-dialog">
+    <div class="dialog-content">
+      <h3>Create discussion page</h3>
+      <p>No discussion page exists for this article. Create one?</p>
+      <textarea id="discussion-template" style="width:100%;min-height:150px;font-family:monospace;font-size:0.85em;">This is the discussion page for **{{TITLE}}**.
+
+Use the chat below to discuss this article.
+
+<wiki-chat></wiki-chat></textarea>
+      <div class="dialog-buttons">
+        <button onclick="createDiscussionPage()">Create</button>
+        <button onclick="document.getElementById('create-discussion-dialog').close()">Cancel</button>
+      </div>
+    </div>
+  </dialog>
   <script>
     const SLUG = "{{SLUG}}";
     const STATIC_REVISION = "{{REVISION}}";
     const API_BASE = "{{API_BASE}}";
+    const BASE_PATH = "{{BASE_PATH}}";
+    const TALK_SLUG = SLUG.startsWith("talk-") ? SLUG : "talk-" + SLUG;
 
     function showDialog(message, { onClose } = {}) {
       const dialog = document.getElementById("wiki-dialog");
       document.getElementById("dialog-message").textContent = message;
-      const okBtn = document.getElementById("dialog-ok");
-      okBtn.onclick = () => {
+      document.getElementById("dialog-ok").onclick = () => {
         dialog.close();
         if (onClose) onClose();
       };
@@ -102,6 +107,7 @@
           const art = await artRes.json();
           if (art.html) {
             document.getElementById("article-content").innerHTML = art.html;
+            initChatWidgets();
           }
         }
       } catch (_) {}
@@ -130,10 +136,7 @@
     async function submitEdit() {
       const content = document.getElementById("edit-textarea").value;
       const summary = document.getElementById("edit-summary").value || "edit";
-      if (!API_BASE) {
-        showDialog("Editing is not available: no API server configured.");
-        return;
-      }
+      if (!API_BASE) { showDialog("Editing is not available: no API server configured."); return; }
       try {
         const res = await fetch(API_BASE + "/api/edit/" + SLUG, {
           method: "POST",
@@ -142,9 +145,7 @@
         });
         const text = await res.text();
         let data;
-        try {
-          data = JSON.parse(text);
-        } catch {
+        try { data = JSON.parse(text); } catch {
           showDialog("Server returned an unexpected response (HTTP " + res.status + "):\n" + text.slice(0, 200));
           return;
         }
@@ -158,61 +159,129 @@
       }
     }
 
-    // Redlink detection
+    // Discussion tab — link to talk page or offer to create it
+    let _talkExists = null;
     (async () => {
       try {
-        const res = await fetch("{{BASE_PATH}}/slugs.json");
+        const res = await fetch(BASE_PATH + "/slugs.json");
         const slugs = new Set(await res.json());
-        const wikiPrefix = "{{BASE_PATH}}/wiki/";
+        // Redlink detection for article content
+        const wikiPrefix = BASE_PATH + "/wiki/";
         document.querySelectorAll("#article-content a").forEach(a => {
           const href = a.getAttribute("href");
           if (href && href.startsWith(wikiPrefix)) {
-            const slug = href.slice(wikiPrefix.length).replace(/\/+$/, "");
-            if (!slugs.has(slug)) a.classList.add("redlink");
+            const s = href.slice(wikiPrefix.length).replace(/\/+$/, "");
+            if (!slugs.has(s)) a.classList.add("redlink");
           }
         });
+        // Discussion tab redlink
+        _talkExists = slugs.has(TALK_SLUG);
+        if (!_talkExists) {
+          document.getElementById("tab-discussion").classList.add("redlink");
+        }
       } catch {}
     })();
 
-    // Tab switching
-    let discussionLoaded = false;
-    function showTab(tab) {
-      document.getElementById("panel-article").style.display = tab === "article" ? "" : "none";
-      document.getElementById("panel-discussion").style.display = tab === "discussion" ? "" : "none";
-      document.getElementById("edit-form").style.display = "none";
-      document.getElementById("tab-article").classList.toggle("active", tab === "article");
-      document.getElementById("tab-discussion").classList.toggle("active", tab === "discussion");
-      document.getElementById("edit-tab").style.fontWeight = "";
-      if (tab === "discussion" && !discussionLoaded) {
-        discussionLoaded = true;
-        loadDiscussion();
+    function goToDiscussion() {
+      if (_talkExists) {
+        location.href = BASE_PATH + "/wiki/" + TALK_SLUG + "/";
+      } else {
+        document.getElementById("create-discussion-dialog").showModal();
       }
     }
 
-    async function loadDiscussion() {
-      const container = document.getElementById("discussion-comments");
-      if (!API_BASE) {
-        container.innerHTML = "<p>Discussion not available: no API configured.</p>";
-        return;
-      }
+    async function createDiscussionPage() {
+      const content = document.getElementById("discussion-template").value;
+      if (!API_BASE) { showDialog("No API configured."); return; }
       try {
-        const res = await fetch(API_BASE + "/api/discuss/" + SLUG);
-        const comments = await res.json();
-        if (comments.length === 0) {
-          container.innerHTML = "<p>No comments yet. Be the first to start a discussion.</p>";
-          // Mark discussion tab as redlink
-          document.getElementById("tab-discussion").classList.add("redlink");
+        const res = await fetch(API_BASE + "/api/edit/" + TALK_SLUG, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content, summary: "Created discussion page" }),
+        });
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); } catch {
+          showDialog("Server error:\n" + text.slice(0, 200));
+          return;
+        }
+        if (data.ok) {
+          document.getElementById("create-discussion-dialog").close();
+          showDialog("Discussion page created!", {
+            onClose: () => location.href = BASE_PATH + "/wiki/" + TALK_SLUG + "/"
+          });
         } else {
-          container.innerHTML = comments.map(c =>
-            '<div class="discussion-comment">' +
-            '<div class="comment-meta">' + new Date(c.posted_at).toLocaleString() + ' — ' + (c.ip || 'anonymous') + '</div>' +
-            '<div class="comment-body">' + escapeHtml(c.message) + '</div>' +
-            '</div>'
-          ).join("");
+          showDialog("Error: " + (data.error || "Unknown"));
         }
       } catch (e) {
-        container.innerHTML = "<p>Error loading discussion: " + e.message + "</p>";
+        showDialog("Failed: " + e.message);
       }
+    }
+
+    // --- Chat widget for <wiki-chat> elements ---
+    function initChatWidgets() {
+      document.querySelectorAll("wiki-chat").forEach(el => {
+        const articleSlug = el.getAttribute("data-article") || SLUG.replace(/^talk-/, "");
+        renderChat(el, articleSlug);
+      });
+    }
+
+    function renderChat(container, articleSlug) {
+      container.innerHTML =
+        '<div class="chat-messages" id="chat-msgs-' + articleSlug + '"></div>' +
+        '<div class="chat-input">' +
+          '<input type="text" id="chat-input-' + articleSlug + '" placeholder="Type a message..." onkeydown="if(event.key===\'Enter\')sendChat(\'' + articleSlug + '\')">' +
+          '<button onclick="sendChat(\'' + articleSlug + '\')">Send</button>' +
+        '</div>';
+      loadChat(articleSlug);
+    }
+
+    async function loadChat(articleSlug) {
+      const msgs = document.getElementById("chat-msgs-" + articleSlug);
+      if (!API_BASE) { msgs.innerHTML = "<p>Chat unavailable.</p>"; return; }
+      try {
+        const res = await fetch(API_BASE + "/api/discuss/" + articleSlug);
+        const comments = await res.json();
+        if (comments.length === 0) {
+          msgs.innerHTML = '<p class="chat-empty">No messages yet.</p>';
+        } else {
+          msgs.innerHTML = comments.map(c => {
+            const time = new Date(c.posted_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+            const date = new Date(c.posted_at).toLocaleDateString();
+            const ip = c.ip || 'anon';
+            return '<div class="chat-msg"><span class="chat-meta">' + date + ' ' + time + ' &middot; ' + ip + '</span> ' + escapeHtml(c.message) + '</div>';
+          }).join("");
+          msgs.scrollTop = msgs.scrollHeight;
+        }
+      } catch (e) {
+        msgs.innerHTML = "<p>Error: " + e.message + "</p>";
+      }
+    }
+
+    async function sendChat(articleSlug) {
+      const input = document.getElementById("chat-input-" + articleSlug);
+      const message = input.value.trim();
+      if (!message) return;
+      if (!API_BASE) { showDialog("Chat unavailable."); return; }
+      input.disabled = true;
+      try {
+        const res = await fetch(API_BASE + "/api/discuss/" + articleSlug, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          input.value = "";
+          loadChat(articleSlug);
+        } else {
+          showDialog("Error: " + (data.error || "Unknown"));
+        }
+      } catch (e) {
+        showDialog("Failed: " + e.message);
+      }
+      input.disabled = false;
+      input.focus();
     }
 
     function escapeHtml(text) {
@@ -221,46 +290,8 @@
       return div.innerHTML;
     }
 
-    async function postComment() {
-      const message = document.getElementById("discussion-textarea").value;
-      if (!message.trim()) {
-        showDialog("Please write a comment.");
-        return;
-      }
-      if (!API_BASE) {
-        showDialog("Discussion not available: no API configured.");
-        return;
-      }
-      try {
-        const res = await fetch(API_BASE + "/api/discuss/" + SLUG, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message }),
-        });
-        const text = await res.text();
-        let data;
-        try { data = JSON.parse(text); } catch {
-          showDialog("Server error (HTTP " + res.status + "):\n" + text.slice(0, 200));
-          return;
-        }
-        if (data.ok) {
-          document.getElementById("discussion-textarea").value = "";
-          discussionLoaded = false;
-          loadDiscussion();
-        } else {
-          showDialog("Error: " + (data.error || "Unknown"));
-        }
-      } catch (e) {
-        showDialog("Could not post comment.\n" + e.message);
-      }
-    }
-
-    // Check if discussion has comments on load (for redlink tab styling)
-    if (API_BASE) {
-      fetch(API_BASE + "/api/discuss/" + SLUG).then(r => r.json()).then(comments => {
-        if (!comments.length) document.getElementById("tab-discussion").classList.add("redlink");
-      }).catch(() => {});
-    }
+    // Init chat widgets on page load
+    initChatWidgets();
   </script>
 </body>
 </html>
