@@ -34,22 +34,34 @@
     </div>
     <div id="content">
       <div id="tabs">
-        <a class="active" href="{{BASE_PATH}}/wiki/{{SLUG}}/">Article</a>
+        <a class="active" href="#" id="tab-article" onclick="showTab('article'); return false;">Article</a>
+        <a href="#" id="tab-discussion" onclick="showTab('discussion'); return false;">Discussion</a>
         <a href="{{BASE_PATH}}/wiki/{{SLUG}}/history/">History</a>
         <a href="#" id="edit-tab" onclick="startEdit(); return false;">Edit</a>
       </div>
-      <h1 id="article-title">{{TITLE}}</h1>
-      <div class="article-meta">
-        Last updated: <time>{{UPDATED_AT}}</time>
+      <div id="panel-article">
+        <h1 id="article-title">{{TITLE}}</h1>
+        <div class="article-meta">
+          Last updated: <time>{{UPDATED_AT}}</time>
+        </div>
+        <div id="article-content">
+          {{CONTENT}}
+        </div>
+        <div id="edit-form" style="display:none">
+          <textarea id="edit-textarea"></textarea>
+          <input type="text" id="edit-summary" placeholder="Edit summary">
+          <button onclick="submitEdit()">Save page</button>
+          <button onclick="cancelEdit()">Cancel</button>
+        </div>
       </div>
-      <div id="article-content">
-        {{CONTENT}}
-      </div>
-      <div id="edit-form" style="display:none">
-        <textarea id="edit-textarea"></textarea>
-        <input type="text" id="edit-summary" placeholder="Edit summary">
-        <button onclick="submitEdit()">Save page</button>
-        <button onclick="cancelEdit()">Cancel</button>
+      <div id="panel-discussion" style="display:none">
+        <h1>Discussion: {{TITLE}}</h1>
+        <div id="discussion-comments"><p>Loading discussion...</p></div>
+        <div id="discussion-form">
+          <h3>Add a comment</h3>
+          <textarea id="discussion-textarea" placeholder="Write your comment..."></textarea>
+          <button onclick="postComment()">Post comment</button>
+        </div>
       </div>
     </div>
   </div>
@@ -161,6 +173,94 @@
         });
       } catch {}
     })();
+
+    // Tab switching
+    let discussionLoaded = false;
+    function showTab(tab) {
+      document.getElementById("panel-article").style.display = tab === "article" ? "" : "none";
+      document.getElementById("panel-discussion").style.display = tab === "discussion" ? "" : "none";
+      document.getElementById("edit-form").style.display = "none";
+      document.getElementById("tab-article").classList.toggle("active", tab === "article");
+      document.getElementById("tab-discussion").classList.toggle("active", tab === "discussion");
+      document.getElementById("edit-tab").style.fontWeight = "";
+      if (tab === "discussion" && !discussionLoaded) {
+        discussionLoaded = true;
+        loadDiscussion();
+      }
+    }
+
+    async function loadDiscussion() {
+      const container = document.getElementById("discussion-comments");
+      if (!API_BASE) {
+        container.innerHTML = "<p>Discussion not available: no API configured.</p>";
+        return;
+      }
+      try {
+        const res = await fetch(API_BASE + "/api/discuss/" + SLUG);
+        const comments = await res.json();
+        if (comments.length === 0) {
+          container.innerHTML = "<p>No comments yet. Be the first to start a discussion.</p>";
+          // Mark discussion tab as redlink
+          document.getElementById("tab-discussion").classList.add("redlink");
+        } else {
+          container.innerHTML = comments.map(c =>
+            '<div class="discussion-comment">' +
+            '<div class="comment-meta">' + new Date(c.posted_at).toLocaleString() + ' — ' + (c.ip || 'anonymous') + '</div>' +
+            '<div class="comment-body">' + escapeHtml(c.message) + '</div>' +
+            '</div>'
+          ).join("");
+        }
+      } catch (e) {
+        container.innerHTML = "<p>Error loading discussion: " + e.message + "</p>";
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function postComment() {
+      const message = document.getElementById("discussion-textarea").value;
+      if (!message.trim()) {
+        showDialog("Please write a comment.");
+        return;
+      }
+      if (!API_BASE) {
+        showDialog("Discussion not available: no API configured.");
+        return;
+      }
+      try {
+        const res = await fetch(API_BASE + "/api/discuss/" + SLUG, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message }),
+        });
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); } catch {
+          showDialog("Server error (HTTP " + res.status + "):\n" + text.slice(0, 200));
+          return;
+        }
+        if (data.ok) {
+          document.getElementById("discussion-textarea").value = "";
+          discussionLoaded = false;
+          loadDiscussion();
+        } else {
+          showDialog("Error: " + (data.error || "Unknown"));
+        }
+      } catch (e) {
+        showDialog("Could not post comment.\n" + e.message);
+      }
+    }
+
+    // Check if discussion has comments on load (for redlink tab styling)
+    if (API_BASE) {
+      fetch(API_BASE + "/api/discuss/" + SLUG).then(r => r.json()).then(comments => {
+        if (!comments.length) document.getElementById("tab-discussion").classList.add("redlink");
+      }).catch(() => {});
+    }
   </script>
 </body>
 </html>

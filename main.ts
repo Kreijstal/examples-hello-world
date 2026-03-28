@@ -176,6 +176,53 @@ async function handleBlockIP(req: Request): Promise<Response> {
   return json({ ok: true });
 }
 
+async function handleGetDiscussion(slug: string): Promise<Response> {
+  const files = await listDir(`discussions/${slug}`);
+  if (files.length === 0) return json([]);
+
+  const comments = [];
+  for (const f of files) {
+    if (f.type !== "file" || !f.name.endsWith(".toon")) continue;
+    const file = await readFile(`discussions/${slug}/${f.name}`);
+    if (!file) continue;
+    const data = toonDecode(file.content) as Record<string, unknown>;
+    comments.push({ id: f.name.replace(".toon", ""), ...data });
+  }
+  comments.sort((a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id));
+  return json(comments);
+}
+
+async function handlePostDiscussion(req: Request, slug: string, info?: Deno.ServeHandlerInfo): Promise<Response> {
+  const ip = getClientIP(req, info);
+
+  const block = await readFile(`blocks/${ip}.toon`);
+  if (block) return err("Your IP is blocked.", 403);
+
+  const body = await req.json();
+  const message: string = body.message;
+  if (!message || !message.trim()) return err("Missing 'message' field.");
+
+  const now = new Date();
+  const timestamp = now.toISOString();
+  const commentId = timestamp.replace(/[:.]/g, "-");
+
+  const comment = {
+    article: slug,
+    posted_at: timestamp,
+    ip,
+    user_agent: req.headers.get("user-agent") ?? "",
+    message: message.trim(),
+  };
+
+  await writeFile(
+    `discussions/${slug}/${commentId}.toon`,
+    toonEncode(comment),
+    `Discussion comment on ${slug}`,
+  );
+
+  return json({ ok: true, id: commentId });
+}
+
 async function handleFreshness(): Promise<Response> {
   // Combine in-memory recent edits with recent GitHub commits
   const articles: Record<string, string> = {};
@@ -369,6 +416,26 @@ Deno.serve(async (req: Request, info: Deno.ServeHandlerInfo) => {
       const m = matchRoute("/api/article/:slug", path);
       if (m) {
         const res = await handleArticle(m.params.slug);
+        for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+        return res;
+      }
+    }
+
+    // GET /api/discuss/:slug
+    if (req.method === "GET") {
+      const m = matchRoute("/api/discuss/:slug", path);
+      if (m) {
+        const res = await handleGetDiscussion(m.params.slug);
+        for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+        return res;
+      }
+    }
+
+    // POST /api/discuss/:slug
+    if (req.method === "POST") {
+      const m = matchRoute("/api/discuss/:slug", path);
+      if (m) {
+        const res = await handlePostDiscussion(req, m.params.slug, info);
         for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
         return res;
       }
