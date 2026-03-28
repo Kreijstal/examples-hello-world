@@ -255,6 +255,14 @@ Deno.serve(async (req: Request) => {
   const corsHeaders = { "Access-Control-Allow-Origin": "*" };
 
   try {
+    // GET /api/debug/env — check which env vars are set (not their values)
+    if (req.method === "GET" && path === "/api/debug/env") {
+      const vars = ["GITHUB_TOKEN", "GITHUB_OWNER", "GITHUB_REPO"];
+      const status: Record<string, boolean> = {};
+      for (const v of vars) status[v] = !!Deno.env.get(v);
+      return json(status);
+    }
+
     // GET /api/freshness
     if (req.method === "GET" && path === "/api/freshness") {
       const res = handleFreshness();
