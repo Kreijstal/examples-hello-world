@@ -35,19 +35,27 @@ function parseFrontmatter(raw) {
 
 async function readArticles() {
   const articles = [];
-  for await (const entry of Deno.readDir(ARTICLES_DIR)) {
-    if (!entry.isFile || !entry.name.endsWith(".md")) continue;
-    const raw = await Deno.readTextFile(join(ARTICLES_DIR, entry.name));
-    const { meta, body } = parseFrontmatter(raw);
-    articles.push({
-      slug: meta.slug || entry.name.replace(".md", ""),
-      title: meta.title || entry.name.replace(".md", ""),
-      updated_at: meta.updated_at || "",
-      latest_revision: meta.latest_revision || "",
-      body,
-      filename: entry.name,
-    });
+  async function walk(dir, prefix = "") {
+    for await (const entry of Deno.readDir(dir)) {
+      const fullPath = join(dir, entry.name);
+      if (entry.isDirectory) {
+        await walk(fullPath, prefix ? prefix + "/" + entry.name : entry.name);
+      } else if (entry.isFile && entry.name.endsWith(".md")) {
+        const raw = await Deno.readTextFile(fullPath);
+        const { meta, body } = parseFrontmatter(raw);
+        const defaultSlug = prefix ? prefix + "/" + entry.name.replace(".md", "") : entry.name.replace(".md", "");
+        articles.push({
+          slug: meta.slug || defaultSlug,
+          title: meta.title || defaultSlug,
+          updated_at: meta.updated_at || "",
+          latest_revision: meta.latest_revision || "",
+          body,
+          filename: entry.name,
+        });
+      }
+    }
   }
+  await walk(ARTICLES_DIR);
   // Sort by title
   articles.sort((a, b) => a.title.localeCompare(b.title));
   return articles;
