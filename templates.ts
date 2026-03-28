@@ -44,7 +44,9 @@ export async function loadTemplates(dir = "templates") {
       const fileRes = await fetch(file.url, { headers });
       if (!fileRes.ok) continue;
       const fileData = await fileRes.json();
-      const content = atob(fileData.content.replace(/\n/g, ""));
+      const binary = atob(fileData.content.replace(/\n/g, ""));
+      const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+      const content = new TextDecoder().decode(bytes);
       templateCache.set(file.name.replace(".html", ""), content);
     }
   } catch {

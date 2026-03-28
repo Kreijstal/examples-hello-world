@@ -2,6 +2,13 @@
 
 const GITHUB_API = "https://api.github.com";
 
+/** Decode base64 to UTF-8 string (atob doesn't handle multi-byte chars like emojis). */
+function decodeBase64(b64: string): string {
+  const binary = atob(b64);
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
 function getConfig() {
   const token = Deno.env.get("GITHUB_TOKEN") || Deno.env.get("GH_TOKEN");
   const owner = Deno.env.get("GITHUB_OWNER");
@@ -38,7 +45,7 @@ export async function readFile(path: string): Promise<{ content: string; sha: st
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`GitHub API error: ${res.status} ${await res.text()}`);
   const data = await res.json();
-  const content = atob(data.content.replace(/\n/g, ""));
+  const content = decodeBase64(data.content.replace(/\n/g, ""));
   return { content, sha: data.sha };
 }
 
@@ -64,7 +71,7 @@ export async function readFileAtRef(path: string, ref: string): Promise<{ conten
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`GitHub API error: ${res.status} ${await res.text()}`);
   const data = await res.json();
-  const content = atob(data.content.replace(/\n/g, ""));
+  const content = decodeBase64(data.content.replace(/\n/g, ""));
   return { content, sha: data.sha };
 }
 
@@ -127,7 +134,7 @@ export async function writeFile(
   const { token, owner, repo } = getConfig();
   const body: Record<string, string> = {
     message,
-    content: btoa(content),
+    content: btoa(String.fromCharCode(...new TextEncoder().encode(content))),
   };
   if (sha) body.sha = sha;
 
