@@ -112,3 +112,70 @@ export async function writeFile(
   const data = await res.json();
   return { sha: data.content.sha, commitSha: data.commit.sha };
 }
+
+/** Write multiple files in a single commit using the Git Trees API. */
+export async function writeMultipleFiles(
+  files: { path: string; content: string }[],
+  message: string,
+): Promise<{ commitSha: string }> {
+  const { token, owner, repo } = getConfig();
+  const h = headers(token);
+  const base = `${GITHUB_API}/repos/${owner}/${repo}`;
+
+  // 1. Get the SHA of the latest commit on the default branch
+  const refRes = await fetch(`${base}/git/ref/heads/main`, { headers: h });
+  if (!refRes.ok) throw new Error(`GitHub API error getting ref: ${refRes.status}`);
+  const refData = await refRes.json();
+  const baseCommitSha = refData.object.sha;
+
+  // 2. Get the tree SHA of that commit
+  const commitRes = await fetch(`${base}/git/commits/${baseCommitSha}`, { headers: h });
+  if (!commitRes.ok) throw new Error(`GitHub API error getting commit: ${commitRes.status}`);
+  const commitData = await commitRes.json();
+  const baseTreeSha = commitData.tree.sha;
+
+  // 3. Create blobs for each file
+  const tree = [];
+  for (const file of files) {
+    const blobRes = await fetch(`${base}/git/blobs`, {
+      method: "POST",
+      headers: h,
+      body: JSON.stringify({ content: file.content, encoding: "utf-8" }),
+    });
+    if (!blobRes.ok) throw new Error(`GitHub API error creating blob: ${blobRes.status}`);
+    const blobData = await blobRes.json();
+    tree.push({ path: file.path, mode: "100644", type: "blob", sha: blobData.sha });
+  }
+
+  // 4. Create a new tree
+  const treeRes = await fetch(`${base}/git/trees`, {
+    method: "POST",
+    headers: h,
+    body: JSON.stringify({ base_tree: baseTreeSha, tree }),
+  });
+  if (!treeRes.ok) throw new Error(`GitHub API error creating tree: ${treeRes.status}`);
+  const treeData = await treeRes.json();
+
+  // 5. Create a new commit
+  const newCommitRes = await fetch(`${base}/git/commits`, {
+    method: "POST",
+    headers: h,
+    body: JSON.stringify({
+      message,
+      tree: treeData.sha,
+      parents: [baseCommitSha],
+    }),
+  });
+  if (!newCommitRes.ok) throw new Error(`GitHub API error creating commit: ${newCommitRes.status}`);
+  const newCommitData = await newCommitRes.json();
+
+  // 6. Update the ref
+  const updateRefRes = await fetch(`${base}/git/refs/heads/main`, {
+    method: "PATCH",
+    headers: h,
+    body: JSON.stringify({ sha: newCommitData.sha }),
+  });
+  if (!updateRefRes.ok) throw new Error(`GitHub API error updating ref: ${updateRefRes.status}`);
+
+  return { commitSha: newCommitData.sha };
+}

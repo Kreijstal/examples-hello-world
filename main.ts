@@ -1,4 +1,4 @@
-import { readFile, writeFile, listDir, getRecentArticleCommits } from "./github.ts";
+import { readFile, writeFile, writeMultipleFiles, listDir, getRecentArticleCommits } from "./github.ts";
 import { encode as toonEncode, decode as toonDecode } from "npm:@toon-format/toon";
 
 // In-memory cache of recent edits for the freshness API.
@@ -75,28 +75,20 @@ latest_revision: "${revisionId}"
 ${content}
 `;
 
-  // Commit article
-  await writeFile(
-    `articles/${slug}.md`,
-    articleContent,
-    `Edit ${slug}: ${summary}`,
-    existing?.sha,
-  );
-
-  // Commit revision metadata
+  // Commit article + revision metadata in a single commit
   const revision = {
     article: slug,
     edited_at: timestamp,
     ip,
+    user_agent: req.headers.get("user-agent") ?? "",
     summary,
     previous_revision: existing ? extractFrontmatter(existing.content).latest_revision ?? null : null,
   };
 
-  await writeFile(
-    `revisions/${slug}/${revisionId}.toon`,
-    toonEncode(revision),
-    `Revision ${revisionId} for ${slug}`,
-  );
+  await writeMultipleFiles([
+    { path: `articles/${slug}.md`, content: articleContent },
+    { path: `revisions/${slug}/${revisionId}.toon`, content: toonEncode(revision) },
+  ], `Edit ${slug}: ${summary}`);
 
   // Cache for freshness
   recentEdits.set(slug, { revision: revisionId, content, updatedAt: timestamp });
@@ -140,27 +132,20 @@ latest_revision: "${newRevisionId}"
 ${content}
 `;
 
-  await writeFile(
-    `articles/${slug}.md`,
-    articleContent,
-    `Revert ${slug} to ${revisionId}`,
-    existing.sha,
-  );
-
   const revision = {
     article: slug,
     edited_at: timestamp,
     ip,
+    user_agent: _req.headers.get("user-agent") ?? "",
     summary: `Reverted to ${revisionId}`,
     previous_revision: extractFrontmatter(existing.content).latest_revision ?? null,
     reverted_to: revisionId,
   };
 
-  await writeFile(
-    `revisions/${slug}/${newRevisionId}.toon`,
-    toonEncode(revision),
-    `Revert revision for ${slug}`,
-  );
+  await writeMultipleFiles([
+    { path: `articles/${slug}.md`, content: articleContent },
+    { path: `revisions/${slug}/${newRevisionId}.toon`, content: toonEncode(revision) },
+  ], `Revert ${slug} to ${revisionId}`);
 
   recentEdits.set(slug, { revision: newRevisionId, content, updatedAt: timestamp });
 
