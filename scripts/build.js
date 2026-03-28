@@ -11,6 +11,8 @@ const REVISIONS_DIR = "revisions";
 const API_BASE = Deno.env.get("API_BASE") || "";
 const GITHUB_OWNER = Deno.env.get("GITHUB_OWNER") || "";
 const GITHUB_REPO = Deno.env.get("GITHUB_REPO") || "";
+// Base path for GitHub Pages project sites (e.g. "/examples-hello-world")
+const BASE_PATH = (Deno.env.get("BASE_PATH") || "").replace(/\/$/, "");
 
 // --- Helpers ---
 
@@ -85,14 +87,17 @@ async function build() {
   try { await Deno.remove(DIST_DIR, { recursive: true }); } catch { /* */ }
   await ensureDir(DIST_DIR);
 
-  // Copy static assets
-  for (const name of ["styles.css", "index.html"]) {
-    await Deno.copyFile(join(SRC_DIR, name), join(DIST_DIR, name));
+  // Copy static assets (process {{BASE_PATH}} in HTML files)
+  await Deno.copyFile(join(SRC_DIR, "styles.css"), join(DIST_DIR, "styles.css"));
+  for (const [src, dst] of [
+    ["index.html", "index.html"],
+    ["search.html", "search/index.html"],
+  ]) {
+    const dir = join(DIST_DIR, ...dst.split("/").slice(0, -1));
+    if (dir !== DIST_DIR) await ensureDir(dir);
+    const html = (await Deno.readTextFile(join(SRC_DIR, src))).replaceAll("{{BASE_PATH}}", BASE_PATH);
+    await Deno.writeTextFile(join(DIST_DIR, dst), html);
   }
-
-  // Search page
-  await ensureDir(join(DIST_DIR, "search"));
-  await Deno.copyFile(join(SRC_DIR, "search.html"), join(DIST_DIR, "search", "index.html"));
 
   // Generate search index
   const searchIndex = articles.map((a) => ({
@@ -112,6 +117,7 @@ async function build() {
       .replaceAll("{{UPDATED_AT}}", article.updated_at)
       .replaceAll("{{CONTENT}}", htmlContent)
       .replaceAll("{{API_BASE}}", API_BASE)
+      .replaceAll("{{BASE_PATH}}", BASE_PATH)
       .replaceAll("{{GITHUB_OWNER}}", GITHUB_OWNER)
       .replaceAll("{{GITHUB_REPO}}", GITHUB_REPO);
 
@@ -157,16 +163,16 @@ function wrapPage(title, bodyHtml) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title} - FreeWiki</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="${BASE_PATH}/styles.css">
 </head>
 <body>
   <nav>
-    <a href="/" class="logo">FreeWiki</a>
+    <a href="${BASE_PATH}/" class="logo">FreeWiki</a>
     <div class="nav-links">
-      <a href="/">Home</a>
-      <a href="/all-articles/">All Articles</a>
-      <a href="/recent-changes/">Recent Changes</a>
-      <a href="/search/">Search</a>
+      <a href="${BASE_PATH}/">Home</a>
+      <a href="${BASE_PATH}/all-articles/">All Articles</a>
+      <a href="${BASE_PATH}/recent-changes/">Recent Changes</a>
+      <a href="${BASE_PATH}/search/">Search</a>
     </div>
   </nav>
   <main>
@@ -181,7 +187,7 @@ function wrapPage(title, bodyHtml) {
 
 function generateAllArticlesPage(articles) {
   const items = articles
-    .map((a) => `<li><a href="/wiki/${a.slug}/">${a.title}</a></li>`)
+    .map((a) => `<li><a href="${BASE_PATH}/wiki/${a.slug}/">${a.title}</a></li>`)
     .join("\n      ");
   return wrapPage("All Articles", `
     <h1>All Articles</h1>
@@ -207,7 +213,7 @@ function generateHistoryPage(article, revisions) {
 
   return wrapPage(`History: ${article.title}`, `
     <h1>History: ${article.title}</h1>
-    <p><a href="/wiki/${article.slug}/">Back to article</a></p>
+    <p><a href="${BASE_PATH}/wiki/${article.slug}/">Back to article</a></p>
     <table>
       <thead><tr><th>Revision</th><th>Date</th><th>Editor IP</th><th>Summary</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -219,7 +225,7 @@ function generateRecentChangesPage(revisions) {
     .map(
       (r) =>
         `<tr>
-      <td><a href="/wiki/${r.article}/">${r.articleTitle || r.article}</a></td>
+      <td><a href="${BASE_PATH}/wiki/${r.article}/">${r.articleTitle || r.article}</a></td>
       <td>${r.edited_at || r.id}</td>
       <td>${r.ip || ""}</td>
       <td>${r.summary || ""}</td>

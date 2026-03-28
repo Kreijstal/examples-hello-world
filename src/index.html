@@ -4,16 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FreeWiki</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="{{BASE_PATH}}/styles.css">
 </head>
 <body>
   <nav>
-    <a href="/" class="logo">FreeWiki</a>
+    <a href="{{BASE_PATH}}/" class="logo">FreeWiki</a>
     <div class="nav-links">
-      <a href="/">Home</a>
-      <a href="/all-articles/">All Articles</a>
-      <a href="/recent-changes/">Recent Changes</a>
-      <a href="/search/">Search</a>
+      <a href="{{BASE_PATH}}/">Home</a>
+      <a href="{{BASE_PATH}}/all-articles/">All Articles</a>
+      <a href="{{BASE_PATH}}/recent-changes/">Recent Changes</a>
+      <a href="{{BASE_PATH}}/search/">Search</a>
     </div>
   </nav>
   <main>
@@ -26,13 +26,13 @@
     <p>FreeWiki — all content stored in GitHub.</p>
   </footer>
   <script>
-    fetch("/search-index.json")
+    fetch("{{BASE_PATH}}/search-index.json")
       .then(r => r.json())
       .then(articles => {
         const ul = document.getElementById("article-list");
         articles.forEach(a => {
           const li = document.createElement("li");
-          li.innerHTML = `<a href="/wiki/${a.slug}/">${a.title}</a>`;
+          li.innerHTML = `<a href="{{BASE_PATH}}/wiki/${a.slug}/">${a.title}</a>`;
           ul.appendChild(li);
         });
       });

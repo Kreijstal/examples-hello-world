@@ -6,16 +6,16 @@
   <title>{{TITLE}} - FreeWiki</title>
   <meta name="article-slug" content="{{SLUG}}">
   <meta name="static-revision" content="{{REVISION}}">
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="{{BASE_PATH}}/styles.css">
 </head>
 <body>
   <nav>
-    <a href="/" class="logo">FreeWiki</a>
+    <a href="{{BASE_PATH}}/" class="logo">FreeWiki</a>
     <div class="nav-links">
-      <a href="/">Home</a>
-      <a href="/all-articles/">All Articles</a>
-      <a href="/recent-changes/">Recent Changes</a>
-      <a href="/search/">Search</a>
+      <a href="{{BASE_PATH}}/">Home</a>
+      <a href="{{BASE_PATH}}/all-articles/">All Articles</a>
+      <a href="{{BASE_PATH}}/recent-changes/">Recent Changes</a>
+      <a href="{{BASE_PATH}}/search/">Search</a>
     </div>
   </nav>
   <main>
@@ -24,7 +24,7 @@
         <h1>{{TITLE}}</h1>
         <div class="article-meta">
           Last updated: <time>{{UPDATED_AT}}</time>
-          | <a href="/wiki/{{SLUG}}/history/">History</a>
+          | <a href="{{BASE_PATH}}/wiki/{{SLUG}}/history/">History</a>
           | <button id="edit-btn" onclick="startEdit()">Edit</button>
         </div>
       </header>
