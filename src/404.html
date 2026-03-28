@@ -78,11 +78,33 @@
     const wikiMatch = path.match(new RegExp("^" + BASE_PATH.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "/wiki/(.+?)/?$"));
     if (wikiMatch) {
       const slug = wikiMatch[1];
-      document.getElementById("not-found").style.display = "none";
-      document.getElementById("create-article").style.display = "block";
       const isTalk = slug.startsWith("talk-");
       const displayName = slug.replace(/-/g, " ");
       document.getElementById("page-title").textContent = isTalk ? "Discussion: " + slug.replace(/^talk-/, "").replace(/-/g, " ") : displayName;
+
+      // Check if the article already exists in the API (not yet built as static page)
+      if (API_BASE) {
+        fetch(API_BASE + "/api/article/" + slug).then(r => {
+          if (r.ok) return r.json();
+          throw new Error("not found");
+        }).then(data => {
+          // Article exists — show it
+          document.getElementById("not-found").style.display = "none";
+          document.getElementById("create-article").style.display = "none";
+          document.getElementById("article-view").style.display = "block";
+          document.getElementById("article-content").innerHTML = data.html || data.content || "";
+        }).catch(() => {
+          // Article doesn't exist — show create form
+          showCreateForm(slug, isTalk);
+        });
+      } else {
+        showCreateForm(slug, isTalk);
+      }
+    }
+
+    function showCreateForm(slug, isTalk) {
+      document.getElementById("not-found").style.display = "none";
+      document.getElementById("create-article").style.display = "block";
       document.getElementById("article-slug-display").textContent = slug;
       if (isTalk) {
         const articleName = slug.replace(/^talk-/, "").replace(/-/g, " ");
