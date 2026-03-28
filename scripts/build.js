@@ -92,10 +92,13 @@ async function build() {
   for (const [src, dst] of [
     ["index.html", "index.html"],
     ["search.html", "search/index.html"],
+    ["404.html", "404.html"],
   ]) {
     const dir = join(DIST_DIR, ...dst.split("/").slice(0, -1));
     if (dir !== DIST_DIR) await ensureDir(dir);
-    const html = (await Deno.readTextFile(join(SRC_DIR, src))).replaceAll("{{BASE_PATH}}", BASE_PATH);
+    const html = (await Deno.readTextFile(join(SRC_DIR, src)))
+      .replaceAll("{{BASE_PATH}}", BASE_PATH)
+      .replaceAll("{{API_BASE}}", API_BASE);
     await Deno.writeTextFile(join(DIST_DIR, dst), html);
   }
 
@@ -106,6 +109,10 @@ async function build() {
     summary: a.body.slice(0, 200).replace(/\n/g, " "),
   }));
   await Deno.writeTextFile(join(DIST_DIR, "search-index.json"), JSON.stringify(searchIndex, null, 2));
+
+  // Generate slugs list for redlink detection
+  const slugs = articles.map((a) => a.slug);
+  await Deno.writeTextFile(join(DIST_DIR, "slugs.json"), JSON.stringify(slugs));
 
   // Generate article pages
   for (const article of articles) {

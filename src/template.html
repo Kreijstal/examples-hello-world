@@ -88,8 +88,8 @@
         if (data.articles[SLUG] && data.articles[SLUG] !== STATIC_REVISION) {
           const artRes = await fetch(API_BASE + "/api/article/" + SLUG);
           const art = await artRes.json();
-          if (art.content) {
-            document.getElementById("article-content").innerHTML = art.content;
+          if (art.html) {
+            document.getElementById("article-content").innerHTML = art.html;
           }
         }
       } catch (_) {}
@@ -145,6 +145,22 @@
         showDialog("Could not reach the edit server at " + API_BASE + ".\n" + e.message);
       }
     }
+
+    // Redlink detection
+    (async () => {
+      try {
+        const res = await fetch("{{BASE_PATH}}/slugs.json");
+        const slugs = new Set(await res.json());
+        const wikiPrefix = "{{BASE_PATH}}/wiki/";
+        document.querySelectorAll("#article-content a").forEach(a => {
+          const href = a.getAttribute("href");
+          if (href && href.startsWith(wikiPrefix)) {
+            const slug = href.slice(wikiPrefix.length).replace(/\/+$/, "");
+            if (!slugs.has(slug)) a.classList.add("redlink");
+          }
+        });
+      } catch {}
+    })();
   </script>
 </body>
 </html>

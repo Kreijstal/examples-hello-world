@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page not found - KreijstalWiki</title>
+  <link rel="stylesheet" href="{{BASE_PATH}}/styles.css">
+</head>
+<body>
+  <div id="header">
+    <a href="{{BASE_PATH}}/" class="logo">KreijstalWiki<small>The free wiki</small></a>
+    <form id="header-search" action="{{BASE_PATH}}/search/" method="get">
+      <input type="text" name="q" placeholder="Search KreijstalWiki">
+      <button type="submit">Search</button>
+    </form>
+  </div>
+  <div id="wrapper">
+    <div id="sidebar">
+      <h3>Navigation</h3>
+      <ul>
+        <li><a href="{{BASE_PATH}}/">Main page</a></li>
+        <li><a href="{{BASE_PATH}}/all-articles/">All articles</a></li>
+        <li><a href="{{BASE_PATH}}/recent-changes/">Recent changes</a></li>
+        <li><a href="{{BASE_PATH}}/search/">Search</a></li>
+        <li><a href="{{BASE_PATH}}/wiki/about/">About</a></li>
+      </ul>
+    </div>
+    <div id="content">
+      <h1 class="page-title" id="page-title">Page not found</h1>
+      <div id="not-found">
+        <p>This page does not exist.</p>
+      </div>
+      <div id="create-article" style="display:none">
+        <p>The article <strong id="article-slug-display"></strong> does not exist yet. You can create it below.</p>
+        <div id="edit-form">
+          <textarea id="edit-textarea" placeholder="Write your article content in Markdown..."></textarea>
+          <input type="text" id="edit-summary" placeholder="Edit summary" value="Created article">
+          <button onclick="createArticle()">Create page</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="footer">
+    Content is available under open license. KreijstalWiki is powered by GitHub and Deno Deploy.
+  </div>
+  <dialog id="wiki-dialog">
+    <div class="dialog-content">
+      <p id="dialog-message"></p>
+      <div class="dialog-buttons">
+        <button id="dialog-ok" autofocus>OK</button>
+      </div>
+    </div>
+  </dialog>
+  <script>
+    const BASE_PATH = "{{BASE_PATH}}";
+    const API_BASE = "{{API_BASE}}";
+
+    function showDialog(message, { onClose } = {}) {
+      const dialog = document.getElementById("wiki-dialog");
+      document.getElementById("dialog-message").textContent = message;
+      document.getElementById("dialog-ok").onclick = () => {
+        dialog.close();
+        if (onClose) onClose();
+      };
+      dialog.showModal();
+    }
+
+    // Detect if this is a wiki article URL
+    const path = location.pathname;
+    const wikiMatch = path.match(new RegExp("^" + BASE_PATH.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "/wiki/([^/]+)/?"));
+    if (wikiMatch) {
+      const slug = wikiMatch[1];
+      document.getElementById("not-found").style.display = "none";
+      document.getElementById("create-article").style.display = "block";
+      document.getElementById("page-title").textContent = slug.replace(/-/g, " ");
+      document.getElementById("article-slug-display").textContent = slug;
+    }
+
+    async function createArticle() {
+      const slug = wikiMatch[1];
+      const content = document.getElementById("edit-textarea").value;
+      const summary = document.getElementById("edit-summary").value || "Created article";
+      if (!content.trim()) {
+        showDialog("Please write some content for the article.");
+        return;
+      }
+      if (!API_BASE) {
+        showDialog("Editing is not available: no API server configured.");
+        return;
+      }
+      try {
+        const res = await fetch(API_BASE + "/api/edit/" + slug, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content, summary }),
+        });
+        const text = await res.text();
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          showDialog("Server returned an unexpected response (HTTP " + res.status + "):\n" + text.slice(0, 200));
+          return;
+        }
+        if (data.ok) {
+          showDialog("Article created!", { onClose: () => location.href = BASE_PATH + "/wiki/" + slug + "/" });
+        } else {
+          showDialog("Error: " + (data.error || "Unknown error"));
+        }
+      } catch (e) {
+        showDialog("Could not reach the server.\n" + e.message);
+      }
+    }
+  </script>
+</body>
+</html>

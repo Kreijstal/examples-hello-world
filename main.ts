@@ -1,5 +1,6 @@
 import { readFile, readFileAtRef, writeFile, writeMultipleFiles, listDir, getRecentArticleCommits, getFileCommits } from "./github.ts";
 import { encode as toonEncode, decode as toonDecode } from "npm:@toon-format/toon";
+import { marked } from "npm:marked";
 
 // In-memory cache of recent edits for the freshness API.
 // Maps slug -> { revision, content, updatedAt }
@@ -197,21 +198,30 @@ async function handleFreshness(): Promise<Response> {
 }
 
 async function handleArticle(slug: string): Promise<Response> {
-  // Check in-memory cache first
+  let content: string;
+  let revision: string;
+  let updatedAt: string;
+
   const cached = recentEdits.get(slug);
   if (cached) {
-    return json({ slug, revision: cached.revision, content: cached.content, updatedAt: cached.updatedAt });
+    content = cached.content;
+    revision = cached.revision;
+    updatedAt = cached.updatedAt;
+  } else {
+    try {
+      const file = await readFile(`articles/${slug}.md`);
+      if (!file) return err("Article not found.", 404);
+      const fm = extractFrontmatter(file.content);
+      content = file.content.replace(/^---\n[\s\S]*?\n---\n?/, "");
+      revision = fm.latest_revision || file.sha;
+      updatedAt = fm.updated_at || "";
+    } catch {
+      return err("Could not fetch article.", 500);
+    }
   }
-  // Fall back to reading from GitHub
-  try {
-    const file = await readFile(`articles/${slug}.md`);
-    if (!file) return err("Article not found.", 404);
-    const fm = extractFrontmatter(file.content);
-    const body = file.content.replace(/^---\n[\s\S]*?\n---\n?/, "");
-    return json({ slug, revision: fm.latest_revision || file.sha, content: body, updatedAt: fm.updated_at || "" });
-  } catch {
-    return err("Could not fetch article.", 500);
-  }
+
+  const html = await marked.parse(content);
+  return json({ slug, revision, content, html, updatedAt });
 }
 
 async function handleGetRevisions(slug: string): Promise<Response> {

@@ -306,6 +306,10 @@ tr:nth-child(even) { background: #f8f9fa; }
 #search-results li { padding: 0.25em 0; }
 #search-results a { color: #0645ad; }
 
+/* Redlinks — links to non-existent articles */
+a.redlink { color: #ba0000; }
+a.redlink:visited { color: #a55858; }
+
 /* Diff display */
 #diff-content {
   font-family: monospace;
