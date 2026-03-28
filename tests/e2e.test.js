@@ -1,9 +1,9 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("FreeWiki static site", () => {
+test.describe("KreijstalWiki static site", () => {
   test("home page loads and lists articles", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("h1.page-title")).toHaveText("Welcome to FreeWiki");
+    await expect(page.locator("h1.page-title")).toHaveText("Welcome to KreijstalWiki");
     await expect(page.locator("#article-list li")).toHaveCount(2, { timeout: 5000 });
     await expect(page.locator("#article-list")).toContainText("Deno");
     await expect(page.locator("#article-list")).toContainText("Hello World");
@@ -58,7 +58,7 @@ test.describe("FreeWiki static site", () => {
 
   test("header with logo and search is present", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("#header .logo")).toContainText("FreeWiki");
+    await expect(page.locator("#header .logo")).toContainText("KreijstalWiki");
     await expect(page.locator("#header-search input")).toBeVisible();
   });
 

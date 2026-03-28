@@ -1,11 +1,11 @@
 ---
-title: "About FreeWiki"
+title: "About KreijstalWiki"
 slug: "about"
 updated_at: "2026-03-28T12:00:00Z"
 latest_revision: "2026-03-28T12-00-00Z"
 ---
 
-FreeWiki is a free, open wiki where anyone can edit any article.
+KreijstalWiki is a free, open wiki where anyone can edit any article.
 
 ## How it works
 
@@ -24,7 +24,7 @@ Click the "Edit" tab on any article to modify it. Edits are saved immediately. E
 
 ## Moderation
 
-FreeWiki uses reactive moderation. All edits are allowed by default. If vandalism occurs, edits can be reverted and the offending IP can be blocked.
+KreijstalWiki uses reactive moderation. All edits are allowed by default. If vandalism occurs, edits can be reverted and the offending IP can be blocked.
 
 ## Revision history
 
@@ -32,7 +32,7 @@ Every edit creates a revision record. You can view the full history of any artic
 
 ## Technology
 
-FreeWiki is built with:
+KreijstalWiki is built with:
 
 - **Deno** for the server runtime and build tooling
 - **GitHub API** for committing changes

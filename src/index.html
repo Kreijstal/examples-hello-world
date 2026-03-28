@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FreeWiki</title>
+  <title>KreijstalWiki</title>
   <link rel="stylesheet" href="{{BASE_PATH}}/styles.css">
 </head>
 <body>
   <div id="header">
-    <a href="{{BASE_PATH}}/" class="logo">FreeWiki<small>The free wiki</small></a>
+    <a href="{{BASE_PATH}}/" class="logo">KreijstalWiki<small>The free wiki</small></a>
     <form id="header-search" action="{{BASE_PATH}}/search/" method="get">
-      <input type="text" name="q" placeholder="Search FreeWiki">
+      <input type="text" name="q" placeholder="Search KreijstalWiki">
       <button type="submit">Search</button>
     </form>
   </div>
@@ -26,14 +26,14 @@
       </ul>
     </div>
     <div id="content">
-      <h1 class="page-title">Welcome to FreeWiki</h1>
+      <h1 class="page-title">Welcome to KreijstalWiki</h1>
       <p>A free, open wiki backed by Git. Anyone can edit.</p>
       <h2 id="article-content">Articles</h2>
       <ul class="article-list" id="article-list"></ul>
     </div>
   </div>
   <div id="footer">
-    Content is available under open license. FreeWiki is powered by GitHub and Deno Deploy.
+    Content is available under open license. KreijstalWiki is powered by GitHub and Deno Deploy.
   </div>
   <script>
     fetch("{{BASE_PATH}}/search-index.json")

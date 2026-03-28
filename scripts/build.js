@@ -162,14 +162,14 @@ function wrapPage(title, bodyHtml) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} - FreeWiki</title>
+  <title>${title} - KreijstalWiki</title>
   <link rel="stylesheet" href="${BASE_PATH}/styles.css">
 </head>
 <body>
   <div id="header">
-    <a href="${BASE_PATH}/" class="logo">FreeWiki<small>The free wiki</small></a>
+    <a href="${BASE_PATH}/" class="logo">KreijstalWiki<small>The free wiki</small></a>
     <form id="header-search" action="${BASE_PATH}/search/" method="get">
-      <input type="text" name="q" placeholder="Search FreeWiki">
+      <input type="text" name="q" placeholder="Search KreijstalWiki">
       <button type="submit">Search</button>
     </form>
   </div>
@@ -190,7 +190,7 @@ function wrapPage(title, bodyHtml) {
     </div>
   </div>
   <div id="footer">
-    Content is available under open license. FreeWiki is powered by GitHub and Deno Deploy.
+    Content is available under open license. KreijstalWiki is powered by GitHub and Deno Deploy.
   </div>
 </body>
 </html>`;
