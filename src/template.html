@@ -56,10 +56,29 @@
   <div id="footer">
     Content is available under open license. KreijstalWiki is powered by <a href="https://github.com/{{GITHUB_OWNER}}/{{GITHUB_REPO}}">GitHub</a> and <a href="https://deno.com/deploy">Deno Deploy</a>.
   </div>
+  <dialog id="wiki-dialog">
+    <div class="dialog-content">
+      <p id="dialog-message"></p>
+      <div class="dialog-buttons">
+        <button id="dialog-ok" autofocus>OK</button>
+      </div>
+    </div>
+  </dialog>
   <script>
     const SLUG = "{{SLUG}}";
     const STATIC_REVISION = "{{REVISION}}";
     const API_BASE = "{{API_BASE}}";
+
+    function showDialog(message, { onClose } = {}) {
+      const dialog = document.getElementById("wiki-dialog");
+      document.getElementById("dialog-message").textContent = message;
+      const okBtn = document.getElementById("dialog-ok");
+      okBtn.onclick = () => {
+        dialog.close();
+        if (onClose) onClose();
+      };
+      dialog.showModal();
+    }
 
     // Freshness check
     (async () => {
@@ -81,13 +100,11 @@
       document.getElementById("article-content").style.display = "none";
       document.getElementById("edit-tab").style.fontWeight = "bold";
       document.getElementById("edit-textarea").value = "Loading...";
-      // Fetch raw markdown from API
       try {
         const res = await fetch(API_BASE + "/api/article/" + SLUG);
         const data = await res.json();
         document.getElementById("edit-textarea").value = data.content || document.getElementById("article-content").innerText;
       } catch {
-        // Fallback to innerText if API unavailable
         document.getElementById("edit-textarea").value = document.getElementById("article-content").innerText;
       }
     }
@@ -102,7 +119,7 @@
       const content = document.getElementById("edit-textarea").value;
       const summary = document.getElementById("edit-summary").value || "edit";
       if (!API_BASE) {
-        alert("Editing is not available: no API server configured.");
+        showDialog("Editing is not available: no API server configured.");
         return;
       }
       try {
@@ -116,17 +133,16 @@
         try {
           data = JSON.parse(text);
         } catch {
-          alert("Server returned an unexpected response (HTTP " + res.status + "):\n" + text.slice(0, 200));
+          showDialog("Server returned an unexpected response (HTTP " + res.status + "):\n" + text.slice(0, 200));
           return;
         }
         if (data.ok) {
-          alert("Edit saved! The page will update shortly.");
-          location.reload();
+          showDialog("Edit saved! The page will update shortly.", { onClose: () => location.reload() });
         } else {
-          alert("Error: " + (data.error || "Unknown error"));
+          showDialog("Error: " + (data.error || "Unknown error"));
         }
       } catch (e) {
-        alert("Could not reach the edit server at " + API_BASE + ".\n" + e.message);
+        showDialog("Could not reach the edit server at " + API_BASE + ".\n" + e.message);
       }
     }
   </script>
