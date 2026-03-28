@@ -1,6 +1,10 @@
 import { readFile, readFileAtRef, writeFile, writeMultipleFiles, listDir, getRecentArticleCommits, getFileCommits } from "./github.ts";
 import { encode as toonEncode, decode as toonDecode } from "npm:@toon-format/toon";
 import { marked } from "npm:marked";
+import { loadTemplates, expandTemplates } from "./templates.ts";
+
+// Load templates on startup
+await loadTemplates("templates");
 
 // In-memory cache of recent edits for the freshness API.
 // Maps slug -> { revision, content, updatedAt }
@@ -267,7 +271,7 @@ async function handleArticle(slug: string): Promise<Response> {
     }
   }
 
-  const html = await marked.parse(content);
+  const html = await marked.parse(expandTemplates(content));
   return json({ slug, revision, content, html, updatedAt });
 }
 

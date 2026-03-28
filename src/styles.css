@@ -393,6 +393,61 @@ wiki-chat {
 #tabs a.redlink { color: #ba0000; }
 
 
+/* Template errors */
+.template-error {
+  background: #fee;
+  border: 1px solid #c00;
+  color: #c00;
+  padding: 0.1em 0.3em;
+  font-family: monospace;
+  font-size: 0.85em;
+}
+
+/* Infobox */
+.infobox {
+  float: right;
+  clear: right;
+  margin: 0 0 0.8em 1em;
+  width: 250px;
+  border: 1px solid #a2a9b1;
+  border-collapse: collapse;
+  font-size: 0.85em;
+  font-family: sans-serif;
+  background: #f8f9fa;
+}
+
+.infobox th, .infobox td {
+  border: 1px solid #eaecf0;
+  padding: 0.3em 0.5em;
+  vertical-align: top;
+}
+
+.infobox-title {
+  background: #eaecf0;
+  font-size: 1.1em;
+  text-align: center;
+  padding: 0.4em;
+}
+
+.infobox-subtitle {
+  text-align: center;
+  font-style: italic;
+  color: #555;
+}
+
+/* Notice boxes */
+.notice {
+  border: 1px solid #a2a9b1;
+  padding: 0.6em 0.8em;
+  margin: 0.5em 0;
+  font-size: 0.9em;
+  font-family: sans-serif;
+}
+
+.notice-info { background: #eaf3ff; border-color: #36c; }
+.notice-warning { background: #fef6e7; border-color: #fc3; }
+.notice-error { background: #fee; border-color: #c00; }
+
 /* Userboxes */
 .userbox {
   display: flex;

@@ -1,6 +1,7 @@
 import { marked } from "npm:marked";
 import { join } from "jsr:@std/path";
 import { decode as toonDecode } from "npm:@toon-format/toon";
+import { loadTemplates, expandTemplates } from "../templates.ts";
 
 const ARTICLES_DIR = "articles";
 const SRC_DIR = "src";
@@ -80,6 +81,7 @@ async function ensureDir(path) {
 }
 
 async function build() {
+  await loadTemplates("templates");
   const template = await Deno.readTextFile(join(SRC_DIR, "template.html"));
   const articles = await readArticles();
 
@@ -117,7 +119,8 @@ async function build() {
 
   // Generate article pages
   for (const article of articles) {
-    const htmlContent = await marked.parse(article.body);
+    const expanded = expandTemplates(article.body);
+    const htmlContent = await marked.parse(expanded);
     const page = template
       .replaceAll("{{TITLE}}", article.title)
       .replaceAll("{{SLUG}}", article.slug)
