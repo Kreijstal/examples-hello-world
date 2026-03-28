@@ -257,9 +257,20 @@ Deno.serve(async (req: Request) => {
   try {
     // GET /api/debug/env — check which env vars are set (not their values)
     if (req.method === "GET" && path === "/api/debug/env") {
-      const vars = ["GITHUB_TOKEN", "GITHUB_OWNER", "GITHUB_REPO"];
-      const status: Record<string, boolean> = {};
-      for (const v of vars) status[v] = !!Deno.env.get(v);
+      const vars = ["GITHUB_TOKEN", "GITHUB_OWNER", "GITHUB_REPO", "GH_TOKEN"];
+      const status: Record<string, string | boolean> = {};
+      for (const v of vars) {
+        const val = Deno.env.get(v);
+        status[v] = val ? `set (${val.length} chars)` : false;
+      }
+      // Also list all env var names (not values) that contain "GIT" or "TOKEN"
+      const allKeys: string[] = [];
+      for (const [key] of Object.entries(Deno.env.toObject())) {
+        if (key.includes("GIT") || key.includes("TOKEN") || key.includes("GITHUB") || key.includes("DENO")) {
+          allKeys.push(key);
+        }
+      }
+      status._relevant_keys = allKeys as unknown as string;
       return json(status);
     }
 
