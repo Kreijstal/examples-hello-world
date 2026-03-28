@@ -54,6 +54,37 @@ export async function listDir(path: string): Promise<GitHubFile[]> {
   return await res.json();
 }
 
+/** Read a file at a specific git ref (commit SHA, branch, tag). */
+export async function readFileAtRef(path: string, ref: string): Promise<{ content: string; sha: string } | null> {
+  const { token, owner, repo } = getConfig();
+  const res = await fetch(
+    `${GITHUB_API}/repos/${owner}/${repo}/contents/${path}?ref=${encodeURIComponent(ref)}`,
+    { headers: headers(token) },
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`GitHub API error: ${res.status} ${await res.text()}`);
+  const data = await res.json();
+  const content = atob(data.content.replace(/\n/g, ""));
+  return { content, sha: data.sha };
+}
+
+/** Get commit history for a specific file. */
+export async function getFileCommits(path: string, perPage = 20): Promise<{ sha: string; message: string; date: string; author: string }[]> {
+  const { token, owner, repo } = getConfig();
+  const res = await fetch(
+    `${GITHUB_API}/repos/${owner}/${repo}/commits?path=${encodeURIComponent(path)}&per_page=${perPage}`,
+    { headers: headers(token) },
+  );
+  if (!res.ok) return [];
+  const commits = await res.json();
+  return commits.map((c: { sha: string; commit: { message: string; author: { date: string; name: string } } }) => ({
+    sha: c.sha,
+    message: c.commit.message,
+    date: c.commit.author.date,
+    author: c.commit.author.name,
+  }));
+}
+
 /** Get recent commits that touched articles. Returns slug -> latest commit SHA. */
 export async function getRecentArticleCommits(since?: string): Promise<{ slug: string; sha: string; date: string }[]> {
   const { token, owner, repo } = getConfig();

@@ -223,10 +223,102 @@ function generateHistoryPage(article, revisions) {
 
   return wrapPage(`History: ${article.title}`, `
     <p><a href="${BASE_PATH}/wiki/${article.slug}/">Back to article</a></p>
-    <table>
+    <table id="static-revisions">
       <thead><tr><th>Revision</th><th>Date</th><th>Editor IP</th><th>Summary</th></tr></thead>
       <tbody>${rows}</tbody>
-    </table>`);
+    </table>
+    <h2>Commit history</h2>
+    <div id="commit-history"><p>Loading commit history...</p></div>
+    <dialog id="diff-dialog">
+      <div class="dialog-content">
+        <h3 id="diff-title"></h3>
+        <pre id="diff-content" style="max-height:60vh;overflow:auto;font-size:0.8em;"></pre>
+        <div class="dialog-buttons">
+          <button id="diff-revert">Revert to this version</button>
+          <button id="diff-close">Close</button>
+        </div>
+      </div>
+    </dialog>
+    <script>
+      const API_BASE = "${API_BASE}";
+      const SLUG = "${article.slug}";
+
+      function simpleDiff(oldText, newText) {
+        const oldLines = (oldText || "").split("\\n");
+        const newLines = (newText || "").split("\\n");
+        const result = [];
+        const max = Math.max(oldLines.length, newLines.length);
+        for (let i = 0; i < max; i++) {
+          const ol = oldLines[i], nl = newLines[i];
+          if (ol === nl) {
+            result.push("  " + (ol || ""));
+          } else {
+            if (ol !== undefined) result.push("- " + ol);
+            if (nl !== undefined) result.push("+ " + nl);
+          }
+        }
+        return result.join("\\n");
+      }
+
+      (async () => {
+        if (!API_BASE) {
+          document.getElementById("commit-history").innerHTML = "<p>API not configured.</p>";
+          return;
+        }
+        try {
+          const res = await fetch(API_BASE + "/api/article/" + SLUG + "/history");
+          const history = await res.json();
+          if (!history.length) {
+            document.getElementById("commit-history").innerHTML = "<p>No commits found.</p>";
+            return;
+          }
+          const container = document.getElementById("commit-history");
+          let html = '<table><thead><tr><th>Date</th><th>Message</th><th>Actions</th></tr></thead><tbody>';
+          history.forEach((commit, i) => {
+            html += '<tr>';
+            html += '<td>' + new Date(commit.date).toLocaleString() + '</td>';
+            html += '<td>' + commit.message + '</td>';
+            html += '<td>';
+            if (i < history.length - 1) {
+              html += '<button onclick="showDiff(' + i + ')">Diff</button> ';
+            }
+            html += '<button onclick="revertTo(\\'' + commit.sha + '\\')">Revert</button>';
+            html += '</td></tr>';
+          });
+          html += '</tbody></table>';
+          container.innerHTML = html;
+          window._history = history;
+        } catch (e) {
+          document.getElementById("commit-history").innerHTML = "<p>Error loading history: " + e.message + "</p>";
+        }
+      })();
+
+      function showDiff(index) {
+        const newer = window._history[index];
+        const older = window._history[index + 1];
+        const dialog = document.getElementById("diff-dialog");
+        document.getElementById("diff-title").textContent = older.sha.slice(0,7) + " → " + newer.sha.slice(0,7);
+        document.getElementById("diff-content").textContent = simpleDiff(older.content, newer.content);
+        document.getElementById("diff-close").onclick = () => dialog.close();
+        document.getElementById("diff-revert").onclick = () => { dialog.close(); revertTo(older.sha); };
+        dialog.showModal();
+      }
+
+      async function revertTo(sha) {
+        if (!confirm("Revert this article to commit " + sha.slice(0,7) + "?")) return;
+        try {
+          const res = await fetch(API_BASE + "/api/revert-to/" + SLUG + "/" + sha, { method: "POST" });
+          const data = await res.json();
+          if (data.ok) {
+            location.reload();
+          } else {
+            document.getElementById("commit-history").innerHTML += "<p>Error: " + (data.error || "Unknown") + "</p>";
+          }
+        } catch (e) {
+          document.getElementById("commit-history").innerHTML += "<p>Error: " + e.message + "</p>";
+        }
+      }
+    </script>`);
 }
 
 function generateRecentChangesPage(revisions) {

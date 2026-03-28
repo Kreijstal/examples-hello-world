@@ -1,4 +1,4 @@
-import { readFile, writeFile, writeMultipleFiles, listDir, getRecentArticleCommits } from "./github.ts";
+import { readFile, readFileAtRef, writeFile, writeMultipleFiles, listDir, getRecentArticleCommits, getFileCommits } from "./github.ts";
 import { encode as toonEncode, decode as toonDecode } from "npm:@toon-format/toon";
 
 // In-memory cache of recent edits for the freshness API.
@@ -227,6 +227,69 @@ async function handleGetRevisions(slug: string): Promise<Response> {
   return json(revisions);
 }
 
+/** Returns commit history for an article with content at each commit for diffing. */
+async function handleArticleHistory(slug: string): Promise<Response> {
+  const commits = await getFileCommits(`articles/${slug}.md`, 30);
+  const history = [];
+  for (const commit of commits) {
+    const file = await readFileAtRef(`articles/${slug}.md`, commit.sha);
+    const body = file ? file.content.replace(/^---\n[\s\S]*?\n---\n?/, "") : null;
+    history.push({
+      sha: commit.sha,
+      message: commit.message,
+      date: commit.date,
+      author: commit.author,
+      content: body,
+    });
+  }
+  return json(history);
+}
+
+/** Revert an article to its state at a specific commit SHA. */
+async function handleRevertToCommit(req: Request, slug: string, commitSha: string, info?: Deno.ServeHandlerInfo): Promise<Response> {
+  const ip = getClientIP(req, info);
+
+  const file = await readFileAtRef(`articles/${slug}.md`, commitSha);
+  if (!file) return err("Article not found at that commit.", 404);
+
+  const content = file.content.replace(/^---\n[\s\S]*?\n---\n?/, "");
+  const existing = await readFile(`articles/${slug}.md`);
+  if (!existing) return err("Article not found.", 404);
+
+  const now = new Date();
+  const timestamp = now.toISOString();
+  const revisionId = timestamp.replace(/[:.]/g, "-");
+
+  const articleContent = `---
+title: "${slug.replace(/-/g, " ")}"
+slug: "${slug}"
+updated_at: "${timestamp}"
+latest_revision: "${revisionId}"
+---
+
+${content}
+`;
+
+  const revision = {
+    article: slug,
+    edited_at: timestamp,
+    ip,
+    user_agent: req.headers.get("user-agent") ?? "",
+    summary: `Reverted to commit ${commitSha.slice(0, 7)}`,
+    previous_revision: extractFrontmatter(existing.content).latest_revision ?? null,
+    reverted_to_commit: commitSha,
+  };
+
+  await writeMultipleFiles([
+    { path: `articles/${slug}.md`, content: articleContent },
+    { path: `revisions/${slug}/${revisionId}.toon`, content: toonEncode(revision) },
+  ], `Revert ${slug} to commit ${commitSha.slice(0, 7)}`);
+
+  recentEdits.set(slug, { revision: revisionId, content, updatedAt: timestamp });
+
+  return json({ ok: true, revision: revisionId });
+}
+
 // --- Frontmatter parser ---
 
 function extractFrontmatter(content: string): Record<string, string> {
@@ -306,6 +369,26 @@ Deno.serve(async (req: Request, info: Deno.ServeHandlerInfo) => {
       const m = matchRoute("/api/revisions/:slug", path);
       if (m) {
         const res = await handleGetRevisions(m.params.slug);
+        for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+        return res;
+      }
+    }
+
+    // GET /api/article/:slug/history
+    if (req.method === "GET") {
+      const m = matchRoute("/api/article/:slug/history", path);
+      if (m) {
+        const res = await handleArticleHistory(m.params.slug);
+        for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+        return res;
+      }
+    }
+
+    // POST /api/revert-to/:slug/:sha
+    if (req.method === "POST") {
+      const m = matchRoute("/api/revert-to/:slug/:sha", path);
+      if (m) {
+        const res = await handleRevertToCommit(req, m.params.slug, m.params.sha, info);
         for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
         return res;
       }

@@ -306,6 +306,28 @@ tr:nth-child(even) { background: #f8f9fa; }
 #search-results li { padding: 0.25em 0; }
 #search-results a { color: #0645ad; }
 
+/* Diff display */
+#diff-content {
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #f8f9fa;
+  border: 1px solid #eaecf0;
+  padding: 0.5em;
+  font-size: 0.85em;
+}
+
+#commit-history table { margin-top: 0.5em; }
+#commit-history button {
+  padding: 0.2em 0.5em;
+  border: 1px solid #a2a9b1;
+  background: #f8f9fa;
+  cursor: pointer;
+  font-size: 0.8em;
+  margin-right: 0.2em;
+}
+#commit-history button:hover { background: #eaecf0; }
+
 /* Dialog */
 dialog#wiki-dialog {
   border: 1px solid #a2a9b1;
