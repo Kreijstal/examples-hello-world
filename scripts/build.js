@@ -128,7 +128,9 @@ async function build() {
   // Generate article pages
   for (const article of articles) {
     const expanded = expandTemplates(article.body);
-    const htmlContent = await marked.parse(expanded);
+    // Rewrite /wiki/ links to include BASE_PATH before markdown rendering
+    const withBasePath = expanded.replaceAll("](/wiki/", `](${BASE_PATH}/wiki/`);
+    const htmlContent = await marked.parse(withBasePath);
     const breadcrumb = generateBreadcrumb(article.slug, BASE_PATH);
     const page = template
       .replaceAll("{{TITLE}}", article.title)
