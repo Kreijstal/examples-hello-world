@@ -69,7 +69,7 @@
 
     // Detect if this is a wiki article URL
     const path = location.pathname;
-    const wikiMatch = path.match(new RegExp("^" + BASE_PATH.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "/wiki/([^/]+)/?"));
+    const wikiMatch = path.match(new RegExp("^" + BASE_PATH.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "/wiki/(.+?)/?$"));
     if (wikiMatch) {
       const slug = wikiMatch[1];
       document.getElementById("not-found").style.display = "none";
