@@ -1,4 +1,4 @@
-import { readFile, writeFile, listDir } from "./github.ts";
+import { readFile, writeFile, listDir, getRecentArticleCommits } from "./github.ts";
 import { encode as toonEncode, decode as toonDecode } from "npm:@toon-format/toon";
 
 // In-memory cache of recent edits for the freshness API.
@@ -190,18 +190,43 @@ async function handleBlockIP(req: Request): Promise<Response> {
   return json({ ok: true });
 }
 
-function handleFreshness(): Response {
+async function handleFreshness(): Promise<Response> {
+  // Combine in-memory recent edits with recent GitHub commits
   const articles: Record<string, string> = {};
   for (const [slug, data] of recentEdits) {
     articles[slug] = data.revision;
   }
+  // Also check GitHub for commits in the last 10 minutes
+  try {
+    const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const recentCommits = await getRecentArticleCommits(since);
+    for (const { slug, sha } of recentCommits) {
+      if (!articles[slug]) {
+        articles[slug] = sha;
+      }
+    }
+  } catch {
+    // If GitHub API fails, just use in-memory data
+  }
   return json({ articles }, 200, "public, max-age=15, stale-while-revalidate=60");
 }
 
-function handleArticle(slug: string): Response {
+async function handleArticle(slug: string): Promise<Response> {
+  // Check in-memory cache first
   const cached = recentEdits.get(slug);
-  if (!cached) return err("No fresh version available.", 404);
-  return json({ slug, revision: cached.revision, content: cached.content, updatedAt: cached.updatedAt });
+  if (cached) {
+    return json({ slug, revision: cached.revision, content: cached.content, updatedAt: cached.updatedAt });
+  }
+  // Fall back to reading from GitHub
+  try {
+    const file = await readFile(`articles/${slug}.md`);
+    if (!file) return err("Article not found.", 404);
+    const fm = extractFrontmatter(file.content);
+    const body = file.content.replace(/^---\n[\s\S]*?\n---\n?/, "");
+    return json({ slug, revision: fm.latest_revision || file.sha, content: body, updatedAt: fm.updated_at || "" });
+  } catch {
+    return err("Could not fetch article.", 500);
+  }
 }
 
 async function handleGetRevisions(slug: string): Promise<Response> {
@@ -276,7 +301,7 @@ Deno.serve(async (req: Request) => {
 
     // GET /api/freshness
     if (req.method === "GET" && path === "/api/freshness") {
-      const res = handleFreshness();
+      const res = await handleFreshness();
       for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
       return res;
     }
@@ -285,7 +310,7 @@ Deno.serve(async (req: Request) => {
     if (req.method === "GET") {
       const m = matchRoute("/api/article/:slug", path);
       if (m) {
-        const res = handleArticle(m.params.slug);
+        const res = await handleArticle(m.params.slug);
         for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
         return res;
       }

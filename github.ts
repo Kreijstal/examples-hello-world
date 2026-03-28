@@ -54,6 +54,38 @@ export async function listDir(path: string): Promise<GitHubFile[]> {
   return await res.json();
 }
 
+/** Get recent commits that touched articles. Returns slug -> latest commit SHA. */
+export async function getRecentArticleCommits(since?: string): Promise<{ slug: string; sha: string; date: string }[]> {
+  const { token, owner, repo } = getConfig();
+  const params = new URLSearchParams({ path: "articles", per_page: "30" });
+  if (since) params.set("since", since);
+  const res = await fetch(
+    `${GITHUB_API}/repos/${owner}/${repo}/commits?${params}`,
+    { headers: headers(token) },
+  );
+  if (!res.ok) return [];
+  const commits = await res.json();
+  const results: { slug: string; sha: string; date: string }[] = [];
+  const seen = new Set<string>();
+  for (const commit of commits) {
+    // Get files changed in this commit
+    const detailRes = await fetch(
+      `${GITHUB_API}/repos/${owner}/${repo}/commits/${commit.sha}`,
+      { headers: headers(token) },
+    );
+    if (!detailRes.ok) continue;
+    const detail = await detailRes.json();
+    for (const file of detail.files || []) {
+      const match = file.filename.match(/^articles\/(.+)\.md$/);
+      if (match && !seen.has(match[1])) {
+        seen.add(match[1]);
+        results.push({ slug: match[1], sha: commit.sha, date: commit.commit.author.date });
+      }
+    }
+  }
+  return results;
+}
+
 /** Create or update a file. If sha is provided, it's an update. */
 export async function writeFile(
   path: string,
