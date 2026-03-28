@@ -181,6 +181,7 @@ function wrapPage(title, bodyHtml) {
         <li><a href="${BASE_PATH}/all-articles/">All articles</a></li>
         <li><a href="${BASE_PATH}/recent-changes/">Recent changes</a></li>
         <li><a href="${BASE_PATH}/search/">Search</a></li>
+        <li><a href="${BASE_PATH}/wiki/about/">About</a></li>
       </ul>
     </div>
     <div id="content">
