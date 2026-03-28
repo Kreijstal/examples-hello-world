@@ -166,21 +166,31 @@ function wrapPage(title, bodyHtml) {
   <link rel="stylesheet" href="${BASE_PATH}/styles.css">
 </head>
 <body>
-  <nav>
-    <a href="${BASE_PATH}/" class="logo">FreeWiki</a>
-    <div class="nav-links">
-      <a href="${BASE_PATH}/">Home</a>
-      <a href="${BASE_PATH}/all-articles/">All Articles</a>
-      <a href="${BASE_PATH}/recent-changes/">Recent Changes</a>
-      <a href="${BASE_PATH}/search/">Search</a>
+  <div id="header">
+    <a href="${BASE_PATH}/" class="logo">FreeWiki<small>The free wiki</small></a>
+    <form id="header-search" action="${BASE_PATH}/search/" method="get">
+      <input type="text" name="q" placeholder="Search FreeWiki">
+      <button type="submit">Search</button>
+    </form>
+  </div>
+  <div id="wrapper">
+    <div id="sidebar">
+      <h3>Navigation</h3>
+      <ul>
+        <li><a href="${BASE_PATH}/">Main page</a></li>
+        <li><a href="${BASE_PATH}/all-articles/">All articles</a></li>
+        <li><a href="${BASE_PATH}/recent-changes/">Recent changes</a></li>
+        <li><a href="${BASE_PATH}/search/">Search</a></li>
+      </ul>
     </div>
-  </nav>
-  <main>
-    ${bodyHtml}
-  </main>
-  <footer>
-    <p>FreeWiki — all content stored in GitHub.</p>
-  </footer>
+    <div id="content">
+      <h1 class="page-title">${title}</h1>
+      ${bodyHtml}
+    </div>
+  </div>
+  <div id="footer">
+    Content is available under open license. FreeWiki is powered by GitHub and Deno Deploy.
+  </div>
 </body>
 </html>`;
 }
@@ -190,7 +200,6 @@ function generateAllArticlesPage(articles) {
     .map((a) => `<li><a href="${BASE_PATH}/wiki/${a.slug}/">${a.title}</a></li>`)
     .join("\n      ");
   return wrapPage("All Articles", `
-    <h1>All Articles</h1>
     <ul class="article-list">
       ${items}
     </ul>`);
@@ -212,7 +221,6 @@ function generateHistoryPage(article, revisions) {
         .join("\n");
 
   return wrapPage(`History: ${article.title}`, `
-    <h1>History: ${article.title}</h1>
     <p><a href="${BASE_PATH}/wiki/${article.slug}/">Back to article</a></p>
     <table>
       <thead><tr><th>Revision</th><th>Date</th><th>Editor IP</th><th>Summary</th></tr></thead>
@@ -234,7 +242,6 @@ function generateRecentChangesPage(revisions) {
     .join("\n");
 
   return wrapPage("Recent Changes", `
-    <h1>Recent Changes</h1>
     <table>
       <thead><tr><th>Article</th><th>Date</th><th>Editor IP</th><th>Summary</th></tr></thead>
       <tbody>${rows}</tbody>

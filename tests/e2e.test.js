@@ -3,8 +3,7 @@ import { test, expect } from "@playwright/test";
 test.describe("FreeWiki static site", () => {
   test("home page loads and lists articles", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("h1")).toHaveText("Welcome to FreeWiki");
-    // Wait for search-index.json to load and populate the list
+    await expect(page.locator("h1.page-title")).toHaveText("Welcome to FreeWiki");
     await expect(page.locator("#article-list li")).toHaveCount(2, { timeout: 5000 });
     await expect(page.locator("#article-list")).toContainText("Deno");
     await expect(page.locator("#article-list")).toContainText("Hello World");
@@ -12,29 +11,27 @@ test.describe("FreeWiki static site", () => {
 
   test("article page renders content", async ({ page }) => {
     await page.goto("/wiki/hello-world/");
-    await expect(page.locator("h1")).toHaveText("Hello World");
+    await expect(page.locator("h1#article-title")).toHaveText("Hello World");
     await expect(page.locator("#article-content")).toContainText("Hello, World!");
-    // Check meta tags
     const slug = await page.locator('meta[name="article-slug"]').getAttribute("content");
     expect(slug).toBe("hello-world");
   });
 
   test("deno article page renders", async ({ page }) => {
     await page.goto("/wiki/deno/");
-    await expect(page.locator("h1")).toHaveText("Deno");
+    await expect(page.locator("h1#article-title")).toHaveText("Deno");
     await expect(page.locator("#article-content")).toContainText("runtime for JavaScript");
   });
 
   test("all articles page lists articles", async ({ page }) => {
     await page.goto("/all-articles/");
-    await expect(page.locator("h1")).toHaveText("All Articles");
+    await expect(page.locator("h1.page-title")).toHaveText("All Articles");
     await expect(page.locator(".article-list li")).toHaveCount(2);
   });
 
   test("search page works", async ({ page }) => {
     await page.goto("/search/");
-    await expect(page.locator("h1")).toHaveText("Search");
-    // Wait for index to load
+    await expect(page.locator("h1.page-title")).toHaveText("Search");
     await page.waitForTimeout(500);
     await page.fill("#search-input", "deno");
     await expect(page.locator("#search-results li")).toHaveCount(1);
@@ -43,30 +40,38 @@ test.describe("FreeWiki static site", () => {
 
   test("recent changes page loads", async ({ page }) => {
     await page.goto("/recent-changes/");
-    await expect(page.locator("h1")).toHaveText("Recent Changes");
+    await expect(page.locator("h1.page-title")).toHaveText("Recent Changes");
   });
 
   test("history page loads", async ({ page }) => {
     await page.goto("/wiki/hello-world/history/");
-    await expect(page.locator("h1")).toContainText("History: Hello World");
+    await expect(page.locator("h1.page-title")).toContainText("History: Hello World");
   });
 
-  test("navigation links are present", async ({ page }) => {
+  test("sidebar navigation is present", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("nav")).toContainText("FreeWiki");
-    await expect(page.locator("nav")).toContainText("All Articles");
-    await expect(page.locator("nav")).toContainText("Recent Changes");
-    await expect(page.locator("nav")).toContainText("Search");
+    await expect(page.locator("#sidebar")).toContainText("Main page");
+    await expect(page.locator("#sidebar")).toContainText("All articles");
+    await expect(page.locator("#sidebar")).toContainText("Recent changes");
+    await expect(page.locator("#sidebar")).toContainText("Search");
   });
 
-  test("edit button exists on article page", async ({ page }) => {
+  test("header with logo and search is present", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator("#header .logo")).toContainText("FreeWiki");
+    await expect(page.locator("#header-search input")).toBeVisible();
+  });
+
+  test("article page has tabs and edit works", async ({ page }) => {
     await page.goto("/wiki/deno/");
-    await expect(page.locator("#edit-btn")).toBeVisible();
-    // Click edit and check form appears
-    await page.click("#edit-btn");
+    await expect(page.locator("#tabs")).toContainText("Article");
+    await expect(page.locator("#tabs")).toContainText("History");
+    await expect(page.locator("#tabs")).toContainText("Edit");
+    // Click edit tab
+    await page.click("#edit-tab");
     await expect(page.locator("#edit-form")).toBeVisible();
     await expect(page.locator("#edit-textarea")).toBeVisible();
-    // Cancel edit
+    // Cancel
     await page.click("#edit-form button:last-of-type");
     await expect(page.locator("#edit-form")).toBeHidden();
   });

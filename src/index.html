@@ -7,24 +7,33 @@
   <link rel="stylesheet" href="{{BASE_PATH}}/styles.css">
 </head>
 <body>
-  <nav>
-    <a href="{{BASE_PATH}}/" class="logo">FreeWiki</a>
-    <div class="nav-links">
-      <a href="{{BASE_PATH}}/">Home</a>
-      <a href="{{BASE_PATH}}/all-articles/">All Articles</a>
-      <a href="{{BASE_PATH}}/recent-changes/">Recent Changes</a>
-      <a href="{{BASE_PATH}}/search/">Search</a>
+  <div id="header">
+    <a href="{{BASE_PATH}}/" class="logo">FreeWiki<small>The free wiki</small></a>
+    <form id="header-search" action="{{BASE_PATH}}/search/" method="get">
+      <input type="text" name="q" placeholder="Search FreeWiki">
+      <button type="submit">Search</button>
+    </form>
+  </div>
+  <div id="wrapper">
+    <div id="sidebar">
+      <h3>Navigation</h3>
+      <ul>
+        <li><a href="{{BASE_PATH}}/">Main page</a></li>
+        <li><a href="{{BASE_PATH}}/all-articles/">All articles</a></li>
+        <li><a href="{{BASE_PATH}}/recent-changes/">Recent changes</a></li>
+        <li><a href="{{BASE_PATH}}/search/">Search</a></li>
+      </ul>
     </div>
-  </nav>
-  <main>
-    <h1>Welcome to FreeWiki</h1>
-    <p>A free, open wiki backed by Git. Anyone can edit.</p>
-    <h2>Articles</h2>
-    <ul class="article-list" id="article-list"></ul>
-  </main>
-  <footer>
-    <p>FreeWiki — all content stored in GitHub.</p>
-  </footer>
+    <div id="content">
+      <h1 class="page-title">Welcome to FreeWiki</h1>
+      <p>A free, open wiki backed by Git. Anyone can edit.</p>
+      <h2 id="article-content">Articles</h2>
+      <ul class="article-list" id="article-list"></ul>
+    </div>
+  </div>
+  <div id="footer">
+    Content is available under open license. FreeWiki is powered by GitHub and Deno Deploy.
+  </div>
   <script>
     fetch("{{BASE_PATH}}/search-index.json")
       .then(r => r.json())

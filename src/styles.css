@@ -1,69 +1,314 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  line-height: 1.6;
-  color: #222;
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 0 1rem;
+  font-family: serif;
+  line-height: 1.5;
+  color: #000;
+  background: #f9f9f9;
 }
 
-nav {
+/* Top banner */
+#header {
+  background: #fbfbfb;
+  border-bottom: 1px solid #a7d7f9;
+  padding: 0.3em 1em;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem 0;
-  border-bottom: 1px solid #ccc;
-  margin-bottom: 1.5rem;
+  justify-content: space-between;
 }
 
-nav .logo {
-  font-size: 1.4rem;
-  font-weight: bold;
+#header .logo {
+  font-family: "Linux Libertine", Georgia, Times, serif;
+  font-size: 1.6em;
+  font-weight: normal;
   text-decoration: none;
-  color: #222;
+  color: #000;
 }
 
-.nav-links { display: flex; gap: 1rem; margin-left: auto; }
-.nav-links a { text-decoration: none; color: #0645ad; }
-.nav-links a:hover { text-decoration: underline; }
+#header .logo small {
+  font-size: 0.55em;
+  color: #555;
+  display: block;
+  font-style: italic;
+}
 
-main { min-height: 60vh; }
+#header-search {
+  display: flex;
+  gap: 0.3em;
+}
 
-article header { margin-bottom: 1.5rem; }
-article h1 { font-size: 1.8rem; margin-bottom: 0.3rem; border-bottom: 1px solid #ccc; padding-bottom: 0.3rem; }
-.article-meta { color: #666; font-size: 0.85rem; }
+#header-search input {
+  padding: 0.2em 0.4em;
+  border: 1px solid #aaa;
+  font-size: 0.85em;
+}
+
+#header-search button {
+  padding: 0.2em 0.6em;
+  background: #ddd;
+  border: 1px solid #aaa;
+  cursor: pointer;
+  font-size: 0.85em;
+}
+
+/* Page layout */
+#wrapper {
+  display: flex;
+  min-height: 80vh;
+}
+
+/* Sidebar */
+#sidebar {
+  width: 160px;
+  min-width: 160px;
+  background: #f6f6f6;
+  border-right: 1px solid #a7d7f9;
+  padding: 0.8em 0;
+  font-size: 0.85em;
+}
+
+#sidebar h3 {
+  font-size: 0.8em;
+  text-transform: uppercase;
+  color: #555;
+  padding: 0.5em 0.8em 0.2em;
+  margin: 0;
+  font-weight: normal;
+  letter-spacing: 0.05em;
+}
+
+#sidebar ul {
+  list-style: none;
+  margin: 0 0 0.5em;
+  padding: 0;
+}
+
+#sidebar li a {
+  display: block;
+  padding: 0.15em 0.8em;
+  color: #0645ad;
+  text-decoration: none;
+  font-size: 0.95em;
+}
+
+#sidebar li a:hover {
+  background: #e8e8e8;
+  text-decoration: underline;
+}
+
+/* Content area */
+#content {
+  flex: 1;
+  padding: 1em 1.5em;
+  max-width: 960px;
+  background: #fff;
+  border-left: 1px solid #a7d7f9;
+  margin-left: -1px;
+}
+
+/* Tabs */
+#tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #a7d7f9;
+  margin: -1em -1.5em 1em -1.5em;
+  padding: 0 1.5em;
+  background: #fbfbfb;
+}
+
+#tabs a {
+  display: inline-block;
+  padding: 0.4em 0.8em;
+  text-decoration: none;
+  color: #0645ad;
+  font-size: 0.85em;
+  border: 1px solid transparent;
+  border-bottom: none;
+  margin-bottom: -1px;
+}
+
+#tabs a.active {
+  background: #fff;
+  border-color: #a7d7f9;
+  border-bottom-color: #fff;
+  color: #000;
+}
+
+#tabs a:hover {
+  text-decoration: underline;
+}
+
+/* Article heading */
+h1#article-title {
+  font-family: "Linux Libertine", Georgia, Times, serif;
+  font-size: 1.8em;
+  font-weight: normal;
+  border-bottom: 1px solid #a2a9b1;
+  padding-bottom: 0.2em;
+  margin-bottom: 0.5em;
+}
+
+.article-meta {
+  color: #72777d;
+  font-size: 0.8em;
+  margin-bottom: 1em;
+  font-family: sans-serif;
+}
+
 .article-meta a { color: #0645ad; }
 
-#article-content h2 { font-size: 1.3rem; margin: 1.5rem 0 0.5rem; border-bottom: 1px solid #eee; padding-bottom: 0.2rem; }
-#article-content h3 { font-size: 1.1rem; margin: 1rem 0 0.4rem; }
-#article-content p { margin: 0.5rem 0; }
-#article-content ul, #article-content ol { margin: 0.5rem 0 0.5rem 1.5rem; }
-#article-content pre { background: #f5f5f5; padding: 0.8rem; border-radius: 4px; overflow-x: auto; margin: 0.5rem 0; }
-#article-content code { font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.9em; }
-#article-content pre code { background: none; }
-#article-content code { background: #f0f0f0; padding: 0.1em 0.3em; border-radius: 3px; }
+/* Article content */
+#article-content h2 {
+  font-family: "Linux Libertine", Georgia, Times, serif;
+  font-size: 1.4em;
+  font-weight: normal;
+  border-bottom: 1px solid #a2a9b1;
+  padding-bottom: 0.15em;
+  margin: 1.2em 0 0.4em;
+}
+
+#article-content h3 {
+  font-size: 1.1em;
+  font-weight: bold;
+  margin: 1em 0 0.3em;
+}
+
+#article-content p { margin: 0.5em 0; }
+#article-content ul, #article-content ol { margin: 0.4em 0 0.4em 1.6em; }
 #article-content a { color: #0645ad; }
+#article-content a:visited { color: #0b0080; }
 
-#edit-form { margin-top: 1rem; }
-#edit-textarea { width: 100%; min-height: 300px; font-family: monospace; font-size: 0.95rem; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; }
-#edit-summary { width: 100%; margin: 0.5rem 0; padding: 0.4rem; border: 1px solid #ccc; border-radius: 4px; }
-#edit-form button { padding: 0.4rem 1rem; margin-right: 0.5rem; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; background: #f8f8f8; }
-#edit-form button:first-of-type { background: #0645ad; color: white; border-color: #0645ad; }
-#edit-btn { background: none; border: 1px solid #0645ad; color: #0645ad; padding: 0.2rem 0.6rem; border-radius: 3px; cursor: pointer; font-size: 0.85rem; }
+#article-content pre {
+  background: #f8f9fa;
+  border: 1px solid #eaecf0;
+  padding: 0.8em;
+  overflow-x: auto;
+  margin: 0.5em 0;
+  font-family: monospace;
+  font-size: 0.9em;
+}
 
-footer { margin-top: 2rem; padding: 1rem 0; border-top: 1px solid #ccc; color: #666; font-size: 0.85rem; }
-footer a { color: #0645ad; }
+#article-content code {
+  font-family: monospace;
+  font-size: 0.9em;
+  background: #f8f9fa;
+  padding: 0.1em 0.3em;
+}
 
-/* Index page */
+#article-content pre code { background: none; padding: 0; }
+
+/* Edit form */
+#edit-form { margin-top: 1em; }
+
+#edit-textarea {
+  width: 100%;
+  min-height: 300px;
+  font-family: monospace;
+  font-size: 0.9em;
+  padding: 0.5em;
+  border: 1px solid #a2a9b1;
+}
+
+#edit-summary {
+  width: 100%;
+  margin: 0.5em 0;
+  padding: 0.3em;
+  border: 1px solid #a2a9b1;
+  font-size: 0.9em;
+}
+
+#edit-form button {
+  padding: 0.3em 0.8em;
+  margin-right: 0.3em;
+  cursor: pointer;
+  border: 1px solid #a2a9b1;
+  background: #f8f9fa;
+  font-size: 0.9em;
+}
+
+#edit-form button:first-of-type {
+  background: #36c;
+  color: #fff;
+  border-color: #36c;
+}
+
+#edit-btn {
+  background: none;
+  border: none;
+  color: #0645ad;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-family: sans-serif;
+}
+
+#edit-btn:hover { text-decoration: underline; }
+
+/* Footer */
+#footer {
+  background: #f6f6f6;
+  border-top: 1px solid #a7d7f9;
+  padding: 0.8em 1.5em;
+  font-size: 0.75em;
+  color: #72777d;
+  text-align: center;
+  font-family: sans-serif;
+}
+
+#footer a { color: #0645ad; }
+
+/* Page heading (non-article pages) */
+h1.page-title {
+  font-family: "Linux Libertine", Georgia, Times, serif;
+  font-size: 1.8em;
+  font-weight: normal;
+  border-bottom: 1px solid #a2a9b1;
+  padding-bottom: 0.2em;
+  margin-bottom: 0.5em;
+}
+
+/* Article list */
 .article-list { list-style: none; }
-.article-list li { padding: 0.4rem 0; border-bottom: 1px solid #f0f0f0; }
+.article-list li { padding: 0.3em 0; border-bottom: 1px solid #eaecf0; }
 .article-list a { color: #0645ad; text-decoration: none; }
 .article-list a:hover { text-decoration: underline; }
 
+/* Tables (history, recent changes) */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9em;
+  margin: 0.5em 0;
+}
+
+th, td {
+  border: 1px solid #a2a9b1;
+  padding: 0.3em 0.5em;
+  text-align: left;
+}
+
+th {
+  background: #eaecf0;
+  font-weight: bold;
+}
+
+tr:nth-child(even) { background: #f8f9fa; }
+
 /* Search */
-#search-input { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; margin-bottom: 1rem; }
+#search-input {
+  width: 100%;
+  padding: 0.4em;
+  border: 1px solid #a2a9b1;
+  font-size: 0.95em;
+  margin-bottom: 0.8em;
+}
+
 #search-results { list-style: none; }
-#search-results li { padding: 0.3rem 0; }
+#search-results li { padding: 0.25em 0; }
 #search-results a { color: #0645ad; }
+
+/* Responsive */
+@media (max-width: 600px) {
+  #wrapper { flex-direction: column; }
+  #sidebar { width: 100%; min-width: 100%; border-right: none; border-bottom: 1px solid #a7d7f9; }
+  #content { padding: 0.8em; }
+}

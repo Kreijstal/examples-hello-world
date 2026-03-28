@@ -9,39 +9,52 @@
   <link rel="stylesheet" href="{{BASE_PATH}}/styles.css">
 </head>
 <body>
-  <nav>
-    <a href="{{BASE_PATH}}/" class="logo">FreeWiki</a>
-    <div class="nav-links">
-      <a href="{{BASE_PATH}}/">Home</a>
-      <a href="{{BASE_PATH}}/all-articles/">All Articles</a>
-      <a href="{{BASE_PATH}}/recent-changes/">Recent Changes</a>
-      <a href="{{BASE_PATH}}/search/">Search</a>
+  <div id="header">
+    <a href="{{BASE_PATH}}/" class="logo">FreeWiki<small>The free wiki</small></a>
+    <form id="header-search" action="{{BASE_PATH}}/search/" method="get">
+      <input type="text" name="q" placeholder="Search FreeWiki">
+      <button type="submit">Search</button>
+    </form>
+  </div>
+  <div id="wrapper">
+    <div id="sidebar">
+      <h3>Navigation</h3>
+      <ul>
+        <li><a href="{{BASE_PATH}}/">Main page</a></li>
+        <li><a href="{{BASE_PATH}}/all-articles/">All articles</a></li>
+        <li><a href="{{BASE_PATH}}/recent-changes/">Recent changes</a></li>
+        <li><a href="{{BASE_PATH}}/search/">Search</a></li>
+      </ul>
+      <h3>Article</h3>
+      <ul>
+        <li><a href="{{BASE_PATH}}/wiki/{{SLUG}}/">Read</a></li>
+        <li><a href="{{BASE_PATH}}/wiki/{{SLUG}}/history/">History</a></li>
+      </ul>
     </div>
-  </nav>
-  <main>
-    <article>
-      <header>
-        <h1>{{TITLE}}</h1>
-        <div class="article-meta">
-          Last updated: <time>{{UPDATED_AT}}</time>
-          | <a href="{{BASE_PATH}}/wiki/{{SLUG}}/history/">History</a>
-          | <button id="edit-btn" onclick="startEdit()">Edit</button>
-        </div>
-      </header>
+    <div id="content">
+      <div id="tabs">
+        <a class="active" href="{{BASE_PATH}}/wiki/{{SLUG}}/">Article</a>
+        <a href="{{BASE_PATH}}/wiki/{{SLUG}}/history/">History</a>
+        <a href="#" id="edit-tab" onclick="startEdit(); return false;">Edit</a>
+      </div>
+      <h1 id="article-title">{{TITLE}}</h1>
+      <div class="article-meta">
+        Last updated: <time>{{UPDATED_AT}}</time>
+      </div>
       <div id="article-content">
         {{CONTENT}}
       </div>
       <div id="edit-form" style="display:none">
         <textarea id="edit-textarea"></textarea>
         <input type="text" id="edit-summary" placeholder="Edit summary">
-        <button onclick="submitEdit()">Save</button>
+        <button onclick="submitEdit()">Save page</button>
         <button onclick="cancelEdit()">Cancel</button>
       </div>
-    </article>
-  </main>
-  <footer>
-    <p>FreeWiki — content is stored in <a href="https://github.com/{{GITHUB_OWNER}}/{{GITHUB_REPO}}">GitHub</a></p>
-  </footer>
+    </div>
+  </div>
+  <div id="footer">
+    Content is available under open license. FreeWiki is powered by <a href="https://github.com/{{GITHUB_OWNER}}/{{GITHUB_REPO}}">GitHub</a> and <a href="https://deno.com/deploy">Deno Deploy</a>.
+  </div>
   <script>
     const SLUG = "{{SLUG}}";
     const STATIC_REVISION = "{{REVISION}}";
@@ -67,13 +80,13 @@
       document.getElementById("edit-textarea").value = content;
       document.getElementById("edit-form").style.display = "block";
       document.getElementById("article-content").style.display = "none";
-      document.getElementById("edit-btn").style.display = "none";
+      document.getElementById("edit-tab").style.fontWeight = "bold";
     }
 
     function cancelEdit() {
       document.getElementById("edit-form").style.display = "none";
       document.getElementById("article-content").style.display = "";
-      document.getElementById("edit-btn").style.display = "";
+      document.getElementById("edit-tab").style.fontWeight = "";
     }
 
     async function submitEdit() {
