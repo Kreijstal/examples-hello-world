@@ -36,15 +36,21 @@ interface RouteMatch {
 function matchRoute(pattern: string, pathname: string): RouteMatch | null {
   const patternParts = pattern.split("/");
   const pathParts = pathname.split("/");
-  if (patternParts.length !== pathParts.length) return null;
   const params: Record<string, string> = {};
   for (let i = 0; i < patternParts.length; i++) {
-    if (patternParts[i].startsWith(":")) {
+    if (patternParts[i].startsWith(":") && patternParts[i].endsWith("*")) {
+      // Rest parameter — captures everything remaining
+      const name = patternParts[i].slice(1, -1);
+      params[name] = pathParts.slice(i).map(decodeURIComponent).join("/");
+      return { params };
+    } else if (patternParts[i].startsWith(":")) {
+      if (i >= pathParts.length) return null;
       params[patternParts[i].slice(1)] = decodeURIComponent(pathParts[i]);
     } else if (patternParts[i] !== pathParts[i]) {
       return null;
     }
   }
+  if (patternParts.length !== pathParts.length) return null;
   return { params };
 }
 
@@ -415,9 +421,19 @@ Deno.serve(async (req: Request, info: Deno.ServeHandlerInfo) => {
       return res;
     }
 
+    // GET /api/article/:slug.../history (must be before /api/article/:slug*)
+    if (req.method === "GET" && path.startsWith("/api/article/") && path.endsWith("/history")) {
+      const slug = decodeURIComponent(path.slice("/api/article/".length, -"/history".length));
+      if (slug) {
+        const res = await handleArticleHistory(slug);
+        for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+        return res;
+      }
+    }
+
     // GET /api/article/:slug
     if (req.method === "GET") {
-      const m = matchRoute("/api/article/:slug", path);
+      const m = matchRoute("/api/article/:slug*", path);
       if (m) {
         const res = await handleArticle(m.params.slug);
         for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
@@ -427,7 +443,7 @@ Deno.serve(async (req: Request, info: Deno.ServeHandlerInfo) => {
 
     // GET /api/discuss/:slug
     if (req.method === "GET") {
-      const m = matchRoute("/api/discuss/:slug", path);
+      const m = matchRoute("/api/discuss/:slug*", path);
       if (m) {
         const res = await handleGetDiscussion(m.params.slug);
         for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
@@ -437,7 +453,7 @@ Deno.serve(async (req: Request, info: Deno.ServeHandlerInfo) => {
 
     // POST /api/discuss/:slug
     if (req.method === "POST") {
-      const m = matchRoute("/api/discuss/:slug", path);
+      const m = matchRoute("/api/discuss/:slug*", path);
       if (m) {
         const res = await handlePostDiscussion(req, m.params.slug, info);
         for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
@@ -447,7 +463,7 @@ Deno.serve(async (req: Request, info: Deno.ServeHandlerInfo) => {
 
     // GET /api/revisions/:slug
     if (req.method === "GET") {
-      const m = matchRoute("/api/revisions/:slug", path);
+      const m = matchRoute("/api/revisions/:slug*", path);
       if (m) {
         const res = await handleGetRevisions(m.params.slug);
         for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
@@ -455,21 +471,14 @@ Deno.serve(async (req: Request, info: Deno.ServeHandlerInfo) => {
       }
     }
 
-    // GET /api/article/:slug/history
-    if (req.method === "GET") {
-      const m = matchRoute("/api/article/:slug/history", path);
-      if (m) {
-        const res = await handleArticleHistory(m.params.slug);
-        for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
-        return res;
-      }
-    }
-
-    // POST /api/revert-to/:slug/:sha
-    if (req.method === "POST") {
-      const m = matchRoute("/api/revert-to/:slug/:sha", path);
-      if (m) {
-        const res = await handleRevertToCommit(req, m.params.slug, m.params.sha, info);
+    // POST /api/revert-to/:slug.../:sha (SHA is always 40 hex chars)
+    if (req.method === "POST" && path.startsWith("/api/revert-to/")) {
+      const rest = path.slice("/api/revert-to/".length);
+      const lastSlash = rest.lastIndexOf("/");
+      if (lastSlash > 0) {
+        const slug = decodeURIComponent(rest.slice(0, lastSlash));
+        const sha = rest.slice(lastSlash + 1);
+        const res = await handleRevertToCommit(req, slug, sha, info);
         for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
         return res;
       }
@@ -477,7 +486,7 @@ Deno.serve(async (req: Request, info: Deno.ServeHandlerInfo) => {
 
     // POST /api/edit/:slug
     if (req.method === "POST") {
-      const m = matchRoute("/api/edit/:slug", path);
+      const m = matchRoute("/api/edit/:slug*", path);
       if (m) {
         const res = await handleEdit(req, m.params.slug, info);
         for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
@@ -485,10 +494,14 @@ Deno.serve(async (req: Request, info: Deno.ServeHandlerInfo) => {
       }
     }
 
-    // POST /api/revert/:slug/:revision
-    if (req.method === "POST") {
-      const m = matchRoute("/api/revert/:slug/:revision", path);
-      if (m) {
+    // POST /api/revert/:slug.../:revision
+    if (req.method === "POST" && path.startsWith("/api/revert/") && !path.startsWith("/api/revert-to/")) {
+      const rest = path.slice("/api/revert/".length);
+      const lastSlash = rest.lastIndexOf("/");
+      if (lastSlash > 0) {
+        const slug = decodeURIComponent(rest.slice(0, lastSlash));
+        const revision = rest.slice(lastSlash + 1);
+        const m = { params: { slug, revision } };
         const res = await handleRevert(req, m.params.slug, m.params.revision, info);
         for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
         return res;
