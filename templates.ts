@@ -7,6 +7,7 @@ const templateCache = new Map<string, string>();
 
 /** Load all templates from the templates/ directory. */
 export async function loadTemplates(dir = "templates") {
+  // Try local filesystem first
   try {
     for await (const entry of Deno.readDir(dir)) {
       if (entry.isFile && entry.name.endsWith(".html")) {
@@ -15,8 +16,39 @@ export async function loadTemplates(dir = "templates") {
         templateCache.set(name, content);
       }
     }
+    if (templateCache.size > 0) return;
   } catch {
-    // templates dir may not exist
+    // templates dir may not exist locally (e.g. on Deno Deploy)
+  }
+
+  // Fall back to loading from GitHub
+  const token = Deno.env.get("GITHUB_TOKEN") || Deno.env.get("GH_TOKEN");
+  const owner = Deno.env.get("GITHUB_OWNER");
+  const repo = Deno.env.get("GITHUB_REPO");
+  if (!token || !owner || !repo) return;
+
+  try {
+    const headers = {
+      "Authorization": `Bearer ${token}`,
+      "Accept": "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    };
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/contents/templates`,
+      { headers },
+    );
+    if (!res.ok) return;
+    const files = await res.json();
+    for (const file of files) {
+      if (file.type !== "file" || !file.name.endsWith(".html")) continue;
+      const fileRes = await fetch(file.url, { headers });
+      if (!fileRes.ok) continue;
+      const fileData = await fileRes.json();
+      const content = atob(fileData.content.replace(/\n/g, ""));
+      templateCache.set(file.name.replace(".html", ""), content);
+    }
+  } catch {
+    // GitHub API failed — templates won't expand
   }
 }
 
