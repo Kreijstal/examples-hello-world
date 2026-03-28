@@ -7,6 +7,7 @@
   <meta name="article-slug" content="{{SLUG}}">
   <meta name="static-revision" content="{{REVISION}}">
   <link rel="stylesheet" href="{{BASE_PATH}}/styles.css">
+  <script src="{{BASE_PATH}}/editor.js"></script>
 </head>
 <body>
   <div id="header">
@@ -98,10 +99,12 @@
       } catch (_) {}
     })();
 
+    let editorInitialized = false;
     async function startEdit() {
       document.getElementById("edit-form").style.display = "block";
       document.getElementById("article-content").style.display = "none";
       document.getElementById("edit-tab").style.fontWeight = "bold";
+      if (!editorInitialized) { initEditorToolbar("edit-textarea"); editorInitialized = true; }
       document.getElementById("edit-textarea").value = "Loading...";
       try {
         const res = await fetch(API_BASE + "/api/article/" + SLUG);

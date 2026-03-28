@@ -197,6 +197,32 @@ h1#article-title {
 
 #article-content pre code { background: none; padding: 0; }
 
+/* Editor toolbar */
+.editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  padding: 0.3em;
+  background: #eaecf0;
+  border: 1px solid #a2a9b1;
+  border-bottom: none;
+}
+
+.editor-toolbar button {
+  padding: 0.2em 0.5em;
+  border: 1px solid #c8ccd1;
+  background: #f8f9fa;
+  cursor: pointer;
+  font-size: 0.8em;
+  font-family: monospace;
+  min-width: 2em;
+}
+
+.editor-toolbar button:hover {
+  background: #fff;
+  border-color: #a2a9b1;
+}
+
 /* Edit form */
 #edit-form { margin-top: 1em; }
 

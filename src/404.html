@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Page not found - KreijstalWiki</title>
   <link rel="stylesheet" href="{{BASE_PATH}}/styles.css">
+  <script src="{{BASE_PATH}}/editor.js"></script>
 </head>
 <body>
   <div id="header">
@@ -84,6 +85,7 @@
           "<wiki-chat></wiki-chat>";
         document.getElementById("edit-summary").value = "Created discussion page";
       }
+      initEditorToolbar("edit-textarea");
     }
 
     async function createArticle() {

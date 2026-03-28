@@ -89,6 +89,7 @@ async function build() {
 
   // Copy static assets (process {{BASE_PATH}} in HTML files)
   await Deno.copyFile(join(SRC_DIR, "styles.css"), join(DIST_DIR, "styles.css"));
+  await Deno.copyFile(join(SRC_DIR, "editor.js"), join(DIST_DIR, "editor.js"));
   for (const [src, dst] of [
     ["index.html", "index.html"],
     ["search.html", "search/index.html"],
