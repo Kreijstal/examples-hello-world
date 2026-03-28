@@ -76,12 +76,20 @@
       } catch (_) {}
     })();
 
-    function startEdit() {
-      const content = document.getElementById("article-content").innerText;
-      document.getElementById("edit-textarea").value = content;
+    async function startEdit() {
       document.getElementById("edit-form").style.display = "block";
       document.getElementById("article-content").style.display = "none";
       document.getElementById("edit-tab").style.fontWeight = "bold";
+      document.getElementById("edit-textarea").value = "Loading...";
+      // Fetch raw markdown from API
+      try {
+        const res = await fetch(API_BASE + "/api/article/" + SLUG);
+        const data = await res.json();
+        document.getElementById("edit-textarea").value = data.content || document.getElementById("article-content").innerText;
+      } catch {
+        // Fallback to innerText if API unavailable
+        document.getElementById("edit-textarea").value = document.getElementById("article-content").innerText;
+      }
     }
 
     function cancelEdit() {

@@ -5,10 +5,10 @@ import { encode as toonEncode, decode as toonDecode } from "npm:@toon-format/too
 // Maps slug -> { revision, content, updatedAt }
 const recentEdits = new Map<string, { revision: string; content: string; updatedAt: string }>();
 
-function getClientIP(req: Request): string {
-  // Deno Deploy sets this header
+function getClientIP(req: Request, info?: Deno.ServeHandlerInfo): string {
   return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
     ?? req.headers.get("x-real-ip")
+    ?? (info?.remoteAddr && "hostname" in info.remoteAddr ? info.remoteAddr.hostname : undefined)
     ?? "unknown";
 }
 
@@ -45,8 +45,8 @@ function matchRoute(pattern: string, pathname: string): RouteMatch | null {
 
 // --- Handlers ---
 
-async function handleEdit(req: Request, slug: string): Promise<Response> {
-  const ip = getClientIP(req);
+async function handleEdit(req: Request, slug: string, info?: Deno.ServeHandlerInfo): Promise<Response> {
+  const ip = getClientIP(req, info);
 
   // Check blocklist
   const block = await readFile(`blocks/${ip}.toon`);
@@ -104,7 +104,7 @@ ${content}
   return json({ ok: true, revision: revisionId });
 }
 
-async function handleRevert(_req: Request, slug: string, revisionId: string): Promise<Response> {
+async function handleRevert(_req: Request, slug: string, revisionId: string, info?: Deno.ServeHandlerInfo): Promise<Response> {
   // Read the revision metadata to find what we're reverting to
   const revFile = await readFile(`revisions/${slug}/${revisionId}.toon`);
   if (!revFile) return err("Revision not found.", 404);
@@ -122,7 +122,7 @@ async function handleRevert(_req: Request, slug: string, revisionId: string): Pr
   const content: string = body.content;
   if (!content) return err("Revert requires 'content' field with the article body to restore.");
 
-  const ip = getClientIP(_req);
+  const ip = getClientIP(_req, info);
   const existing = await readFile(`articles/${slug}.md`);
   if (!existing) return err("Article not found.", 404);
 
@@ -262,7 +262,7 @@ function extractFrontmatter(content: string): Record<string, string> {
 
 // --- Main server ---
 
-Deno.serve(async (req: Request) => {
+Deno.serve(async (req: Request, info: Deno.ServeHandlerInfo) => {
   const url = new URL(req.url);
   const path = url.pathname;
 
@@ -330,7 +330,7 @@ Deno.serve(async (req: Request) => {
     if (req.method === "POST") {
       const m = matchRoute("/api/edit/:slug", path);
       if (m) {
-        const res = await handleEdit(req, m.params.slug);
+        const res = await handleEdit(req, m.params.slug, info);
         for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
         return res;
       }
@@ -340,7 +340,7 @@ Deno.serve(async (req: Request) => {
     if (req.method === "POST") {
       const m = matchRoute("/api/revert/:slug/:revision", path);
       if (m) {
-        const res = await handleRevert(req, m.params.slug, m.params.revision);
+        const res = await handleRevert(req, m.params.slug, m.params.revision, info);
         for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
         return res;
       }
