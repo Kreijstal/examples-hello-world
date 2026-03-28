@@ -40,6 +40,12 @@
           <button onclick="createArticle()">Create page</button>
         </div>
       </div>
+      <div id="article-view" style="display:none">
+        <div class="article-meta">
+          This article was just created. It will appear as a static page after the next site rebuild.
+        </div>
+        <div id="article-content"></div>
+      </div>
     </div>
   </div>
   <div id="footer">
@@ -116,7 +122,16 @@
           return;
         }
         if (data.ok) {
-          showDialog("Article created!", { onClose: () => location.href = BASE_PATH + "/wiki/" + slug + "/" });
+          // Show the article inline instead of navigating (static page doesn't exist yet)
+          try {
+            const artRes = await fetch(API_BASE + "/api/article/" + slug);
+            const artData = await artRes.json();
+            document.getElementById("create-article").style.display = "none";
+            document.getElementById("article-view").style.display = "block";
+            document.getElementById("article-content").innerHTML = artData.html || artData.content || "";
+          } catch {
+            showDialog("Article created! It will be visible after the site rebuilds.");
+          }
         } else {
           showDialog("Error: " + (data.error || "Unknown error"));
         }
