@@ -129,9 +129,11 @@ async function build() {
   for (const article of articles) {
     const expanded = expandTemplates(article.body);
     const htmlContent = await marked.parse(expanded);
+    const breadcrumb = generateBreadcrumb(article.slug, BASE_PATH);
     const page = template
       .replaceAll("{{TITLE}}", article.title)
       .replaceAll("{{SLUG}}", article.slug)
+      .replaceAll("{{BREADCRUMB}}", breadcrumb)
       .replaceAll("{{REVISION}}", article.latest_revision)
       .replaceAll("{{UPDATED_AT}}", article.updated_at)
       .replaceAll("{{CONTENT}}", htmlContent)
@@ -221,6 +223,18 @@ function wrapPage(title, bodyHtml) {
   </div>
 </body>
 </html>`;
+}
+
+function generateBreadcrumb(slug, basePath) {
+  const parts = slug.split("/");
+  if (parts.length <= 1) return "";
+  const crumbs = [];
+  for (let i = 0; i < parts.length - 1; i++) {
+    const partial = parts.slice(0, i + 1).join("/");
+    crumbs.push(`<a href="${basePath}/wiki/${partial}/">${parts[i]}</a>`);
+  }
+  crumbs.push(`<span>${parts[parts.length - 1]}</span>`);
+  return crumbs.join(" / ");
 }
 
 function generateAllArticlesPage(articles) {

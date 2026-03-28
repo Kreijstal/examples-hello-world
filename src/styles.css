@@ -148,6 +148,16 @@ h1#article-title {
   margin-bottom: 0.5em;
 }
 
+#breadcrumb {
+  font-size: 0.8em;
+  font-family: sans-serif;
+  color: #72777d;
+  margin-bottom: 0.2em;
+}
+
+#breadcrumb a { color: #0645ad; }
+#breadcrumb:empty { display: none; }
+
 .article-meta {
   color: #72777d;
   font-size: 0.8em;
