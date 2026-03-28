@@ -3,7 +3,7 @@
 const GITHUB_API = "https://api.github.com";
 
 function getConfig() {
-  const token = Deno.env.get("GITHUB_TOKEN");
+  const token = Deno.env.get("GITHUB_TOKEN") || Deno.env.get("GH_TOKEN");
   const owner = Deno.env.get("GITHUB_OWNER");
   const repo = Deno.env.get("GITHUB_REPO");
   if (!token || !owner || !repo) {
