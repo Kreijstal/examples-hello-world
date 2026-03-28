@@ -72,8 +72,18 @@
       const slug = wikiMatch[1];
       document.getElementById("not-found").style.display = "none";
       document.getElementById("create-article").style.display = "block";
-      document.getElementById("page-title").textContent = slug.replace(/-/g, " ");
+      const isTalk = slug.startsWith("talk-");
+      const displayName = slug.replace(/-/g, " ");
+      document.getElementById("page-title").textContent = isTalk ? "Discussion: " + slug.replace(/^talk-/, "").replace(/-/g, " ") : displayName;
       document.getElementById("article-slug-display").textContent = slug;
+      if (isTalk) {
+        const articleName = slug.replace(/^talk-/, "").replace(/-/g, " ");
+        document.getElementById("edit-textarea").value =
+          "This is the discussion page for **" + articleName + "**.\n\n" +
+          "Use the chat below to discuss this article.\n\n" +
+          "<wiki-chat></wiki-chat>";
+        document.getElementById("edit-summary").value = "Created discussion page";
+      }
     }
 
     async function createArticle() {

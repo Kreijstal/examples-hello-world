@@ -65,21 +65,6 @@
       </div>
     </div>
   </dialog>
-  <dialog id="create-discussion-dialog">
-    <div class="dialog-content">
-      <h3>Create discussion page</h3>
-      <p>No discussion page exists for this article. Create one?</p>
-      <textarea id="discussion-template" style="width:100%;min-height:150px;font-family:monospace;font-size:0.85em;">This is the discussion page for **{{TITLE}}**.
-
-Use the chat below to discuss this article.
-
-<wiki-chat></wiki-chat></textarea>
-      <div class="dialog-buttons">
-        <button onclick="createDiscussionPage()">Create</button>
-        <button onclick="document.getElementById('create-discussion-dialog').close()">Cancel</button>
-      </div>
-    </div>
-  </dialog>
   <script>
     const SLUG = "{{SLUG}}";
     const STATIC_REVISION = "{{REVISION}}";
@@ -159,14 +144,13 @@ Use the chat below to discuss this article.
       }
     }
 
-    // Discussion tab — link to talk page or offer to create it
-    let _talkExists = null;
+    // Redlink detection
     (async () => {
       try {
         const res = await fetch(BASE_PATH + "/slugs.json");
         const slugs = new Set(await res.json());
-        // Redlink detection for article content
         const wikiPrefix = BASE_PATH + "/wiki/";
+        // Article content links
         document.querySelectorAll("#article-content a").forEach(a => {
           const href = a.getAttribute("href");
           if (href && href.startsWith(wikiPrefix)) {
@@ -174,48 +158,16 @@ Use the chat below to discuss this article.
             if (!slugs.has(s)) a.classList.add("redlink");
           }
         });
-        // Discussion tab redlink
-        _talkExists = slugs.has(TALK_SLUG);
-        if (!_talkExists) {
+        // Discussion tab
+        if (!slugs.has(TALK_SLUG)) {
           document.getElementById("tab-discussion").classList.add("redlink");
         }
       } catch {}
     })();
 
     function goToDiscussion() {
-      if (_talkExists) {
-        location.href = BASE_PATH + "/wiki/" + TALK_SLUG + "/";
-      } else {
-        document.getElementById("create-discussion-dialog").showModal();
-      }
-    }
-
-    async function createDiscussionPage() {
-      const content = document.getElementById("discussion-template").value;
-      if (!API_BASE) { showDialog("No API configured."); return; }
-      try {
-        const res = await fetch(API_BASE + "/api/edit/" + TALK_SLUG, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content, summary: "Created discussion page" }),
-        });
-        const text = await res.text();
-        let data;
-        try { data = JSON.parse(text); } catch {
-          showDialog("Server error:\n" + text.slice(0, 200));
-          return;
-        }
-        if (data.ok) {
-          document.getElementById("create-discussion-dialog").close();
-          showDialog("Discussion page created!", {
-            onClose: () => location.href = BASE_PATH + "/wiki/" + TALK_SLUG + "/"
-          });
-        } else {
-          showDialog("Error: " + (data.error || "Unknown"));
-        }
-      } catch (e) {
-        showDialog("Failed: " + e.message);
-      }
+      // Navigate to talk page — if it doesn't exist, 404 page handles creation
+      location.href = BASE_PATH + "/wiki/" + TALK_SLUG + "/";
     }
 
     // --- Chat widget for <wiki-chat> elements ---

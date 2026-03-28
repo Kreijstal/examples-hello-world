@@ -366,21 +366,6 @@ wiki-chat {
 /* Tab redlink styling */
 #tabs a.redlink { color: #ba0000; }
 
-/* Create discussion dialog */
-#create-discussion-dialog { max-width: 500px; width: 90%; }
-#create-discussion-dialog textarea { margin: 0.5em 0; }
-#create-discussion-dialog .dialog-buttons button {
-  padding: 0.35em 1em;
-  border: 1px solid #a2a9b1;
-  background: #f8f9fa;
-  cursor: pointer;
-  margin-left: 0.3em;
-}
-#create-discussion-dialog .dialog-buttons button:first-child {
-  background: #36c;
-  color: #fff;
-  border-color: #36c;
-}
 
 /* Redlinks — links to non-existent articles */
 a.redlink { color: #ba0000; }
