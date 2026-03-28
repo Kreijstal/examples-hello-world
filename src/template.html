@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{TITLE}} - FreeWiki</title>
+  <meta name="article-slug" content="{{SLUG}}">
+  <meta name="static-revision" content="{{REVISION}}">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <nav>
+    <a href="/" class="logo">FreeWiki</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/all-articles/">All Articles</a>
+      <a href="/recent-changes/">Recent Changes</a>
+      <a href="/search/">Search</a>
+    </div>
+  </nav>
+  <main>
+    <article>
+      <header>
+        <h1>{{TITLE}}</h1>
+        <div class="article-meta">
+          Last updated: <time>{{UPDATED_AT}}</time>
+          | <a href="/wiki/{{SLUG}}/history/">History</a>
+          | <button id="edit-btn" onclick="startEdit()">Edit</button>
+        </div>
+      </header>
+      <div id="article-content">
+        {{CONTENT}}
+      </div>
+      <div id="edit-form" style="display:none">
+        <textarea id="edit-textarea"></textarea>
+        <input type="text" id="edit-summary" placeholder="Edit summary">
+        <button onclick="submitEdit()">Save</button>
+        <button onclick="cancelEdit()">Cancel</button>
+      </div>
+    </article>
+  </main>
+  <footer>
+    <p>FreeWiki — content is stored in <a href="https://github.com/{{GITHUB_OWNER}}/{{GITHUB_REPO}}">GitHub</a></p>
+  </footer>
+  <script>
+    const SLUG = "{{SLUG}}";
+    const STATIC_REVISION = "{{REVISION}}";
+    const API_BASE = "{{API_BASE}}";
+
+    // Freshness check
+    (async () => {
+      try {
+        const res = await fetch(API_BASE + "/api/freshness");
+        const data = await res.json();
+        if (data.articles[SLUG] && data.articles[SLUG] !== STATIC_REVISION) {
+          const artRes = await fetch(API_BASE + "/api/article/" + SLUG);
+          const art = await artRes.json();
+          if (art.content) {
+            document.getElementById("article-content").innerHTML = art.content;
+          }
+        }
+      } catch (_) {}
+    })();
+
+    function startEdit() {
+      const content = document.getElementById("article-content").innerText;
+      document.getElementById("edit-textarea").value = content;
+      document.getElementById("edit-form").style.display = "block";
+      document.getElementById("article-content").style.display = "none";
+      document.getElementById("edit-btn").style.display = "none";
+    }
+
+    function cancelEdit() {
+      document.getElementById("edit-form").style.display = "none";
+      document.getElementById("article-content").style.display = "";
+      document.getElementById("edit-btn").style.display = "";
+    }
+
+    async function submitEdit() {
+      const content = document.getElementById("edit-textarea").value;
+      const summary = document.getElementById("edit-summary").value || "edit";
+      try {
+        const res = await fetch(API_BASE + "/api/edit/" + SLUG, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content, summary }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          alert("Edit saved! The page will update shortly.");
+          location.reload();
+        } else {
+          alert("Error: " + (data.error || "Unknown error"));
+        }
+      } catch (e) {
+        alert("Failed to save: " + e.message);
+      }
+    }
+  </script>
+</body>
+</html>

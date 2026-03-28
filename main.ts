@@ -1,5 +1,317 @@
-import { serveFile } from "jsr:@std/http/file-server";
+import { readFile, writeFile, listDir } from "./github.ts";
+import { encode as toonEncode, decode as toonDecode } from "npm:@toon-format/toon";
 
-Deno.serve((req: Request) => {
-    return serveFile(req, "./index.html");
+// In-memory cache of recent edits for the freshness API.
+// Maps slug -> { revision, content, updatedAt }
+const recentEdits = new Map<string, { revision: string; content: string; updatedAt: string }>();
+
+function getClientIP(req: Request): string {
+  // Deno Deploy sets this header
+  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    ?? req.headers.get("x-real-ip")
+    ?? "unknown";
+}
+
+function json(data: unknown, status = 200, cacheControl?: string): Response {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (cacheControl) headers["Cache-Control"] = cacheControl;
+  return new Response(JSON.stringify(data), { status, headers });
+}
+
+function err(message: string, status = 400): Response {
+  return json({ error: message }, status);
+}
+
+// --- Route matching ---
+
+interface RouteMatch {
+  params: Record<string, string>;
+}
+
+function matchRoute(pattern: string, pathname: string): RouteMatch | null {
+  const patternParts = pattern.split("/");
+  const pathParts = pathname.split("/");
+  if (patternParts.length !== pathParts.length) return null;
+  const params: Record<string, string> = {};
+  for (let i = 0; i < patternParts.length; i++) {
+    if (patternParts[i].startsWith(":")) {
+      params[patternParts[i].slice(1)] = decodeURIComponent(pathParts[i]);
+    } else if (patternParts[i] !== pathParts[i]) {
+      return null;
+    }
+  }
+  return { params };
+}
+
+// --- Handlers ---
+
+async function handleEdit(req: Request, slug: string): Promise<Response> {
+  const ip = getClientIP(req);
+
+  // Check blocklist
+  const block = await readFile(`blocks/${ip}.toon`);
+  if (block) return err("Your IP is blocked from editing.", 403);
+
+  const body = await req.json();
+  const content: string = body.content;
+  const summary: string = body.summary ?? "edit";
+  if (!content) return err("Missing 'content' field.");
+
+  // Read existing article (if any) to get SHA for update
+  const existing = await readFile(`articles/${slug}.md`);
+
+  const now = new Date();
+  const timestamp = now.toISOString();
+  const revisionId = timestamp.replace(/[:.]/g, "-");
+
+  // Build article frontmatter + body
+  const articleContent = `---
+title: "${slug.replace(/-/g, " ")}"
+slug: "${slug}"
+updated_at: "${timestamp}"
+latest_revision: "${revisionId}"
+---
+
+${content}
+`;
+
+  // Commit article
+  await writeFile(
+    `articles/${slug}.md`,
+    articleContent,
+    `Edit ${slug}: ${summary}`,
+    existing?.sha,
+  );
+
+  // Commit revision metadata
+  const revision = {
+    article: slug,
+    edited_at: timestamp,
+    ip,
+    summary,
+    previous_revision: existing ? extractFrontmatter(existing.content).latest_revision ?? null : null,
+  };
+
+  await writeFile(
+    `revisions/${slug}/${revisionId}.toon`,
+    toonEncode(revision),
+    `Revision ${revisionId} for ${slug}`,
+  );
+
+  // Cache for freshness
+  recentEdits.set(slug, { revision: revisionId, content, updatedAt: timestamp });
+
+  return json({ ok: true, revision: revisionId });
+}
+
+async function handleRevert(_req: Request, slug: string, revisionId: string): Promise<Response> {
+  // Read the revision metadata to find what we're reverting to
+  const revFile = await readFile(`revisions/${slug}/${revisionId}.toon`);
+  if (!revFile) return err("Revision not found.", 404);
+
+  // We need to reconstruct the article content at that revision.
+  // Since we store full article content in the article file and revisions are sequential,
+  // the simplest approach: read the article file at that commit.
+  // But via Contents API we can only read HEAD. So instead, we re-apply:
+  // For v1, revert means: the admin provides the content to restore.
+  // Alternative: store full content snapshots in revisions.
+
+  // For now, revert by reading the target revision's previous state is hard without
+  // git history access. Let's use a pragmatic approach: the revert request includes content.
+  const body = await _req.json();
+  const content: string = body.content;
+  if (!content) return err("Revert requires 'content' field with the article body to restore.");
+
+  const ip = getClientIP(_req);
+  const existing = await readFile(`articles/${slug}.md`);
+  if (!existing) return err("Article not found.", 404);
+
+  const now = new Date();
+  const timestamp = now.toISOString();
+  const newRevisionId = timestamp.replace(/[:.]/g, "-");
+
+  const articleContent = `---
+title: "${slug.replace(/-/g, " ")}"
+slug: "${slug}"
+updated_at: "${timestamp}"
+latest_revision: "${newRevisionId}"
+---
+
+${content}
+`;
+
+  await writeFile(
+    `articles/${slug}.md`,
+    articleContent,
+    `Revert ${slug} to ${revisionId}`,
+    existing.sha,
+  );
+
+  const revision = {
+    article: slug,
+    edited_at: timestamp,
+    ip,
+    summary: `Reverted to ${revisionId}`,
+    previous_revision: extractFrontmatter(existing.content).latest_revision ?? null,
+    reverted_to: revisionId,
+  };
+
+  await writeFile(
+    `revisions/${slug}/${newRevisionId}.toon`,
+    toonEncode(revision),
+    `Revert revision for ${slug}`,
+  );
+
+  recentEdits.set(slug, { revision: newRevisionId, content, updatedAt: timestamp });
+
+  return json({ ok: true, revision: newRevisionId });
+}
+
+async function handleBlockIP(req: Request): Promise<Response> {
+  const body = await req.json();
+  const ip: string = body.ip;
+  const reason: string = body.reason ?? "blocked";
+  if (!ip) return err("Missing 'ip' field.");
+
+  const existing = await readFile(`blocks/${ip}.toon`);
+  const blockData = {
+    ip,
+    blocked_at: new Date().toISOString(),
+    reason,
+  };
+
+  await writeFile(
+    `blocks/${ip}.toon`,
+    toonEncode(blockData),
+    `Block IP ${ip}: ${reason}`,
+    existing?.sha,
+  );
+
+  return json({ ok: true });
+}
+
+function handleFreshness(): Response {
+  const articles: Record<string, string> = {};
+  for (const [slug, data] of recentEdits) {
+    articles[slug] = data.revision;
+  }
+  return json({ articles }, 200, "public, max-age=15, stale-while-revalidate=60");
+}
+
+function handleArticle(slug: string): Response {
+  const cached = recentEdits.get(slug);
+  if (!cached) return err("No fresh version available.", 404);
+  return json({ slug, revision: cached.revision, content: cached.content, updatedAt: cached.updatedAt });
+}
+
+async function handleGetRevisions(slug: string): Promise<Response> {
+  const files = await listDir(`revisions/${slug}`);
+  if (files.length === 0) return json([]);
+
+  // Return revision list sorted by name (timestamp-based)
+  const revisions = files
+    .filter((f) => f.type === "file" && f.name.endsWith(".toon"))
+    .map((f) => ({ id: f.name.replace(".toon", ""), path: f.path }))
+    .sort((a, b) => b.id.localeCompare(a.id));
+
+  return json(revisions);
+}
+
+// --- Frontmatter parser ---
+
+function extractFrontmatter(content: string): Record<string, string> {
+  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!match) return {};
+  const result: Record<string, string> = {};
+  for (const line of match[1].split("\n")) {
+    const idx = line.indexOf(":");
+    if (idx > 0) {
+      const key = line.slice(0, idx).trim();
+      let val = line.slice(idx + 1).trim();
+      if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
+      result[key] = val;
+    }
+  }
+  return result;
+}
+
+// --- Main server ---
+
+Deno.serve(async (req: Request) => {
+  const url = new URL(req.url);
+  const path = url.pathname;
+
+  // CORS for browser access
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      },
+    });
+  }
+
+  const corsHeaders = { "Access-Control-Allow-Origin": "*" };
+
+  try {
+    // GET /api/freshness
+    if (req.method === "GET" && path === "/api/freshness") {
+      const res = handleFreshness();
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+
+    // GET /api/article/:slug
+    if (req.method === "GET") {
+      const m = matchRoute("/api/article/:slug", path);
+      if (m) {
+        const res = handleArticle(m.params.slug);
+        for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+        return res;
+      }
+    }
+
+    // GET /api/revisions/:slug
+    if (req.method === "GET") {
+      const m = matchRoute("/api/revisions/:slug", path);
+      if (m) {
+        const res = await handleGetRevisions(m.params.slug);
+        for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+        return res;
+      }
+    }
+
+    // POST /api/edit/:slug
+    if (req.method === "POST") {
+      const m = matchRoute("/api/edit/:slug", path);
+      if (m) {
+        const res = await handleEdit(req, m.params.slug);
+        for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+        return res;
+      }
+    }
+
+    // POST /api/revert/:slug/:revision
+    if (req.method === "POST") {
+      const m = matchRoute("/api/revert/:slug/:revision", path);
+      if (m) {
+        const res = await handleRevert(req, m.params.slug, m.params.revision);
+        for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+        return res;
+      }
+    }
+
+    // POST /api/block-ip
+    if (req.method === "POST" && path === "/api/block-ip") {
+      const res = await handleBlockIP(req);
+      for (const [k, v] of Object.entries(corsHeaders)) res.headers.set(k, v);
+      return res;
+    }
+
+    return new Response("Not found", { status: 404 });
+  } catch (e) {
+    console.error(e);
+    return err(e instanceof Error ? e.message : "Internal error", 500);
+  }
 });

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FreeWiki</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <nav>
+    <a href="/" class="logo">FreeWiki</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/all-articles/">All Articles</a>
+      <a href="/recent-changes/">Recent Changes</a>
+      <a href="/search/">Search</a>
+    </div>
+  </nav>
+  <main>
+    <h1>Welcome to FreeWiki</h1>
+    <p>A free, open wiki backed by Git. Anyone can edit.</p>
+    <h2>Articles</h2>
+    <ul class="article-list" id="article-list"></ul>
+  </main>
+  <footer>
+    <p>FreeWiki — all content stored in GitHub.</p>
+  </footer>
+  <script>
+    fetch("/search-index.json")
+      .then(r => r.json())
+      .then(articles => {
+        const ul = document.getElementById("article-list");
+        articles.forEach(a => {
+          const li = document.createElement("li");
+          li.innerHTML = `<a href="/wiki/${a.slug}/">${a.title}</a>`;
+          ul.appendChild(li);
+        });
+      });
+  </script>
+</body>
+</html>

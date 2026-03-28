@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search - FreeWiki</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <nav>
+    <a href="/" class="logo">FreeWiki</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/all-articles/">All Articles</a>
+      <a href="/recent-changes/">Recent Changes</a>
+      <a href="/search/">Search</a>
+    </div>
+  </nav>
+  <main>
+    <h1>Search</h1>
+    <input type="text" id="search-input" placeholder="Search articles..." autofocus>
+    <ul id="search-results"></ul>
+  </main>
+  <footer>
+    <p>FreeWiki — all content stored in GitHub.</p>
+  </footer>
+  <script>
+    let articles = [];
+    fetch("/search-index.json").then(r => r.json()).then(data => { articles = data; });
+
+    document.getElementById("search-input").addEventListener("input", (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      const ul = document.getElementById("search-results");
+      ul.innerHTML = "";
+      if (!q) return;
+      const matches = articles.filter(a =>
+        a.title.toLowerCase().includes(q) ||
+        (a.summary && a.summary.toLowerCase().includes(q))
+      );
+      matches.forEach(a => {
+        const li = document.createElement("li");
+        li.innerHTML = `<a href="/wiki/${a.slug}/">${a.title}</a>`;
+        ul.appendChild(li);
+      });
+    });
+  </script>
+</body>
+</html>
